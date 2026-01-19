@@ -3,6 +3,7 @@ using UnityEngine.InputSystem;
 
 public class ClimbHand : MonoBehaviour
 {
+
     [Header("References")]
     public ClimbManager climbManager;
     public InputActionProperty grabAction;
@@ -19,6 +20,7 @@ public class ClimbHand : MonoBehaviour
 
     private int climbContacts = 0;
     private bool isGrabbing = false;
+    public Vector3 WallNormal { get; private set; } = Vector3.zero;
 
     private void OnEnable()
     {
@@ -75,9 +77,26 @@ public class ClimbHand : MonoBehaviour
         if (((1 << other.gameObject.layer) & climbableMask) != 0)
         {
             climbContacts = Mathf.Max(0, climbContacts - 1);
-            if (climbContacts == 0 && !isGrabbing)
-                SetFree();
+
+            if (climbContacts == 0)
+            {
+                WallNormal = Vector3.zero;
+                if (!isGrabbing)
+                    SetFree();
+            }
         }
+    }
+
+    private void OnTriggerStay(Collider other)
+    {
+        if (((1 << other.gameObject.layer) & climbableMask) == 0) return;
+
+        // normal aproximada usando el punto mas cercano del collider de la pared
+        Vector3 p = other.ClosestPoint(transform.position);
+        Vector3 n = transform.position - p;
+
+        if (n.sqrMagnitude > 0.0001f)
+            WallNormal = n.normalized;
     }
 
     private void SetFree()

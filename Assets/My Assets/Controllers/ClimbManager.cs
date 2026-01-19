@@ -3,11 +3,16 @@ using UnityEngine;
 public class ClimbManager : MonoBehaviour
 {
     [Header("Refs")]
-    public CharacterController controller;     // el del Player
-    public MonoBehaviour locomotionScript;     // tu script de movimiento con joystick (para desactivar)
+    public CharacterController controller;
+    public MonoBehaviour locomotionScript;
+    public LayerMask climbableMask;
+
 
     [Header("Tuning")]
-    public float maxClimbSpeed = 4.0f;         // límite por seguridad
+    public float maxClimbSpeed = 4.0f;
+    public float climbStrength = 1.5f;
+    public float wallProbeDistance = 0.3f;
+    public float wallPushOut = 0.02f;
 
     private ClimbHand activeHand;
     private bool isClimbing;
@@ -20,10 +25,8 @@ public class ClimbManager : MonoBehaviour
 
     public void TryBeginClimb(ClimbHand hand)
     {
-        // si ya estamos escalando con esa mano, nada
         if (isClimbing && activeHand == hand) return;
 
-        // si no estamos escalando, o cambiamos a otra mano:
         activeHand = hand;
 
         if (!isClimbing)
@@ -33,6 +36,8 @@ public class ClimbManager : MonoBehaviour
         }
 
         lastHandPos = activeHand.HandWorldPos;
+        
+
     }
 
     public void TryEndClimb(ClimbHand hand)
@@ -45,17 +50,23 @@ public class ClimbManager : MonoBehaviour
         activeHand = null;
 
         if (locomotionScript) locomotionScript.enabled = true;
+
     }
 
-    private void Update()
+    private void LateUpdate()
     {
         if (!isClimbing || activeHand == null || controller == null) return;
 
         Vector3 current = activeHand.HandWorldPos;
-        Vector3 handDelta = current - lastHandPos;      // mano se movió así
-        Vector3 move = -handDelta;                      // cuerpo va al contrario
+        Vector3 handDelta = current - lastHandPos;
+        Vector3 move = -handDelta * climbStrength;
 
-        // límite de velocidad (evita saltos por tracking)
+        Vector3 n = activeHand.WallNormal;
+        if (n != Vector3.zero)
+        {
+            move = Vector3.ProjectOnPlane(move, n);
+            move += n * wallPushOut;
+        }
         float maxStep = maxClimbSpeed * Time.deltaTime;
         if (move.magnitude > maxStep)
             move = move.normalized * maxStep;
@@ -63,4 +74,5 @@ public class ClimbManager : MonoBehaviour
         controller.Move(move);
         lastHandPos = current;
     }
+
 }

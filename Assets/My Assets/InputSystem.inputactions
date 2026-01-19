@@ -16,9 +16,18 @@
                     "initialStateCheck": true
                 },
                 {
-                    "name": "Climb",
+                    "name": "GrabLeft",
                     "type": "Value",
                     "id": "84341ab2-2ff3-4868-a1e5-1c6fdb89237f",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "GrabRight",
+                    "type": "Value",
+                    "id": "a8cc1c56-fcb7-410d-aa76-f3b31d4b422b",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -44,18 +53,18 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "Climb",
+                    "action": "GrabLeft",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
                 {
                     "name": "",
-                    "id": "fd4a4c2a-99ea-4380-8d41-03be6191911a",
+                    "id": "3a74c8f1-f301-457a-9d9d-6b6c67898296",
                     "path": "<XRController>{RightHand}/{Grip}",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "Climb",
+                    "action": "GrabRight",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }
