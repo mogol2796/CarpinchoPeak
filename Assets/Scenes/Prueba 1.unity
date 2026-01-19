@@ -7657,8 +7657,10 @@ MonoBehaviour:
   playerRoot: {fileID: 99624232}
   ovrCharacterController: {fileID: 2041770856}
   locomotionScript: {fileID: 321523492}
-  climbStrength: 1.5
-  maxClimbSpeed: 4
+  disableWhileClimbing: []
+  climbStrength: 2.5
+  maxClimbSpeed: 6
+  moveSmoothing: 20
 --- !u!4 &1292911990
 Transform:
   m_ObjectHideFlags: 0
