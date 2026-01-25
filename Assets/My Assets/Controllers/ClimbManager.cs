@@ -5,12 +5,12 @@ using OvrCharacterController = Oculus.Interaction.Locomotion.CharacterController
 public class ClimbManager : MonoBehaviour
 {
     [Header("Refs (Building Blocks)")]
-    public Transform playerRoot;                         // GameObject "Player"
-    public OvrCharacterController ovrCharacterController;// Locomotor/PlayerController
-    public MonoBehaviour locomotionScript;               // FirstPersonLocomotor o equivalente
+    public Transform playerRoot;                          // GameObject "Player"
+    public OvrCharacterController ovrCharacterController;  // Locomotor/PlayerController
+    public MonoBehaviour locomotionScript;                // FirstPersonLocomotor o equivalente
 
     [Header("Disable while climbing (BB safety)")]
-    public MonoBehaviour[] disableWhileClimbing;         // WallPenetrationTunneling, SmoothMovementTunneling…
+    public MonoBehaviour[] disableWhileClimbing;          // WallPenetrationTunneling, SmoothMovementTunneling…
 
     [Header("Climb Tuning")]
     public float climbStrength = 2.5f;
@@ -33,8 +33,6 @@ public class ClimbManager : MonoBehaviour
     private float releaseTimer = 0f;
     private float fallVelocity = 0f;
 
-    /* ---------------- REGISTRO DE MANOS ---------------- */
-
     public void RegisterHand(ClimbHand hand)
     {
         if (hand && !hands.Contains(hand))
@@ -47,8 +45,6 @@ public class ClimbManager : MonoBehaviour
         if (hand == activeHand)
             StopClimb();
     }
-
-    /* ---------------- ESCALADA ---------------- */
 
     public void TryBeginClimb(ClimbHand hand)
     {
@@ -70,6 +66,10 @@ public class ClimbManager : MonoBehaviour
 
         lastHandPos = hand.HandWorldPos;
         smoothedApplied = Vector3.zero;
+
+        // cancela cualquier caída anterior
+        releaseTimer = 0f;
+        fallVelocity = 0f;
     }
 
     public void TryEndClimb(ClimbHand hand)
@@ -88,11 +88,9 @@ public class ClimbManager : MonoBehaviour
         StopClimb();
     }
 
-    /* ---------------- UPDATE ---------------- */
-
     private void LateUpdate()
     {
-        // Caída natural tras soltar
+        // Caída tras soltar (antes de devolver control al locomotor)
         if (!isClimbing && releaseTimer > 0f)
         {
             HandleReleaseFall();
@@ -121,17 +119,20 @@ public class ClimbManager : MonoBehaviour
         lastHandPos = current;
     }
 
-    /* ---------------- MOVIMIENTO CON COLISIÓN ---------------- */
-
     private void ApplyMoveWithCollision(Vector3 move)
     {
         Transform ccT = ovrCharacterController.transform;
-        Vector3 before = ccT.position;
+
+        // ✅ Guarda LOCAL para revertir bien (evita teleports al re-sincronizar)
+        Vector3 localBefore = ccT.localPosition;
+
+        // Guarda world solo para medir delta aplicado por colisiones
+        Vector3 worldBefore = ccT.position;
 
         ovrCharacterController.Move(move);
 
-        Vector3 after = ccT.position;
-        Vector3 appliedDelta = after - before;
+        Vector3 worldAfter = ccT.position;
+        Vector3 appliedDelta = worldAfter - worldBefore;
 
         smoothedApplied = Vector3.Lerp(
             smoothedApplied,
@@ -141,11 +142,9 @@ public class ClimbManager : MonoBehaviour
 
         playerRoot.position += smoothedApplied;
 
-        // Revertimos CC para que no se despegue del rig
-        ccT.position = before;
+        // ✅ Revertir LOCAL, no WORLD
+        ccT.localPosition = localBefore;
     }
-
-    /* ---------------- CAÍDA TRAS SOLTAR ---------------- */
 
     private void HandleReleaseFall()
     {
@@ -158,6 +157,8 @@ public class ClimbManager : MonoBehaviour
 
         if (releaseTimer <= 0f)
         {
+            smoothedApplied = Vector3.zero;
+
             if (disableWhileClimbing != null)
                 foreach (var b in disableWhileClimbing)
                     if (b) b.enabled = true;
@@ -171,12 +172,11 @@ public class ClimbManager : MonoBehaviour
         isClimbing = false;
         activeHand = null;
 
-        // Inicia caída natural
+        // Inicia caída natural (y mantenemos locomotion/safety apagados durante ese tiempo)
         releaseTimer = releaseSeconds;
         fallVelocity = 0f;
+        smoothedApplied = Vector3.zero;
     }
-
-    /* ---------------- UTILIDADES ---------------- */
 
     private ClimbHand FindFallbackHand(ClimbHand ignored)
     {
