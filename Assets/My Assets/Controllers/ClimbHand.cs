@@ -28,7 +28,7 @@ public class ClimbHand : MonoBehaviour
     {
         grabAction.action?.Enable();
         climbManager?.RegisterHand(this);
-        SetFree();
+        // SetFree();
     }
 
     private void OnDisable()
@@ -44,10 +44,19 @@ public class ClimbHand : MonoBehaviour
 
         if (pressed && climbContacts > 0)
         {
+            if (climbManager != null && climbManager.outOfStamina)
+            {
+                // no puede agarrar, solo muestra touch/free según contacto
+                IsGrabbing = false;
+                // if (climbContacts > 0) SetTouch();
+                // else SetFree();
+                return;
+            }
+
             if (!IsGrabbing)
             {
                 IsGrabbing = true;
-                SetGrab();
+                // SetGrab();
                 climbManager?.TryBeginClimb(this);
             }
         }
@@ -59,8 +68,8 @@ public class ClimbHand : MonoBehaviour
                 climbManager?.TryEndClimb(this);
             }
 
-            if (climbContacts > 0) SetTouch();
-            else SetFree();
+            // if (climbContacts > 0) SetTouch();
+            // else SetFree();
         }
     }
 
@@ -69,7 +78,7 @@ public class ClimbHand : MonoBehaviour
         if (((1 << other.gameObject.layer) & climbableMask) != 0)
         {
             climbContacts++;
-            if (!IsGrabbing) SetTouch();
+            // if (!IsGrabbing) SetTouch();
         }
     }
 
@@ -81,7 +90,7 @@ public class ClimbHand : MonoBehaviour
             if (climbContacts == 0)
             {
                 WallNormal = Vector3.zero;
-                if (!IsGrabbing) SetFree();
+                // if (!IsGrabbing) SetFree();
             }
         }
     }
@@ -95,7 +104,16 @@ public class ClimbHand : MonoBehaviour
         if (n.sqrMagnitude > 0.0001f) WallNormal = n.normalized;
     }
 
-    private void SetFree()  { if (handRenderer) handRenderer.material = freeMat; }
-    private void SetTouch() { if (handRenderer) handRenderer.material = touchMat; }
-    private void SetGrab()  { if (handRenderer) handRenderer.material = grabMat; }
+    public void ForceRelease()
+    {
+        IsGrabbing = false;
+        // visual
+        // if (HasClimbContact) SetTouch();
+        // else SetFree();
+    }
+
+
+    // private void SetFree()  { if (handRenderer) handRenderer.material = freeMat; }
+    // private void SetTouch() { if (handRenderer) handRenderer.material = touchMat; }
+    // private void SetGrab()  { if (handRenderer) handRenderer.material = grabMat; }
 }

@@ -23,6 +23,17 @@ public class ClimbManager : MonoBehaviour
     public float releaseGravity = 9.81f;
     public float releaseSeconds = 0.25f; // 0.15–0.35
 
+    [Header("Stamina")]
+    public float maxStamina = 100f;
+    public float stamina = 100f;
+    public float drainPerSecond = 18f;      // gasto mientras agarras
+    public float regenPerSecond = 25f;      // recarga en suelo y sin agarrar
+    public float minStaminaToGrab = 15f;    // umbral para volver a agarrar
+    public bool outOfStamina = false;
+
+    public float Stamina01 => maxStamina <= 0 ? 0 : stamina / maxStamina;
+
+
     private readonly List<ClimbHand> hands = new();
     private ClimbHand activeHand;
     private bool isClimbing;
@@ -48,6 +59,8 @@ public class ClimbManager : MonoBehaviour
 
     public void TryBeginClimb(ClimbHand hand)
     {
+        if (outOfStamina) return;
+
         if (hand == null || !hand.IsGrabbing || !hand.HasClimbContact) return;
         if (!ovrCharacterController || !playerRoot) return;
 
@@ -90,6 +103,8 @@ public class ClimbManager : MonoBehaviour
 
     private void LateUpdate()
     {
+
+        UpdateStamina();
         // Caída tras soltar (antes de devolver control al locomotor)
         if (!isClimbing && releaseTimer > 0f)
         {
@@ -118,6 +133,67 @@ public class ClimbManager : MonoBehaviour
 
         lastHandPos = current;
     }
+
+
+    private void UpdateStamina()
+    {
+        // ¿está agarrando alguna mano?
+        bool anyGrabbing = false;
+        for (int i = 0; i < hands.Count; i++)
+        {
+            var h = hands[i];
+            if (h && h.IsGrabbing && h.HasClimbContact)
+            {
+                anyGrabbing = true;
+                break;
+            }
+        }
+
+        // grounded (si el BB expone algo mejor, lo cambiamos después)
+        bool grounded = IsGroundedApprox();
+
+        if (anyGrabbing)
+        {
+            stamina = Mathf.Max(0f, stamina - drainPerSecond * Time.deltaTime);
+            if (stamina <= 0f) outOfStamina = true;
+        }
+        else
+        {
+            // recarga solo si estás en suelo
+            if (grounded)
+                stamina = Mathf.Min(maxStamina, stamina + regenPerSecond * Time.deltaTime);
+
+            // sales del estado "agotado" al superar el umbral
+            if (outOfStamina && stamina >= minStaminaToGrab)
+                outOfStamina = false;
+        }
+
+        // Si te quedas sin stamina mientras escalas: suelta
+        if (outOfStamina && isClimbing)
+            ForceReleaseAllHands();
+    }
+
+    private bool IsGroundedApprox()
+    {
+        // Raycast corto hacia abajo desde playerRoot
+        Vector3 origin = playerRoot.position + Vector3.up * 0.2f;
+        return Physics.Raycast(origin, Vector3.down, 0.35f, ~0, QueryTriggerInteraction.Ignore);
+    }
+
+
+    private void ForceReleaseAllHands()
+    {
+        // Fuerza a las manos a salir de "grabbing"
+        for (int i = 0; i < hands.Count; i++)
+        {
+            var h = hands[i];
+            if (h) h.ForceRelease();
+        }
+
+        // Para escalada (inicia caída como ya tienes)
+        StopClimb();
+    }
+
 
     private void ApplyMoveWithCollision(Vector3 move)
     {
