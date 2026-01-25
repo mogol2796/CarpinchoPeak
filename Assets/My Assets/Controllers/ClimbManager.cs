@@ -5,12 +5,12 @@ using OvrCharacterController = Oculus.Interaction.Locomotion.CharacterController
 public class ClimbManager : MonoBehaviour
 {
     [Header("Refs (Building Blocks)")]
-    public Transform playerRoot;                          // GameObject "Player"
-    public OvrCharacterController ovrCharacterController;  // Locomotor/PlayerController
-    public MonoBehaviour locomotionScript;                // FirstPersonLocomotor o equivalente
+    public Transform playerRoot;                          //GameObject "Player"
+    public OvrCharacterController ovrCharacterController;  //Locomotor/PlayerController
+    public MonoBehaviour locomotionScript;                //FirstPersonLocomotor o equivalente
 
     [Header("Disable while climbing (BB safety)")]
-    public MonoBehaviour[] disableWhileClimbing;          // WallPenetrationTunneling, SmoothMovementTunneling…
+    public MonoBehaviour[] disableWhileClimbing;          //WallPenetrationTunneling, SmoothMovementTunneling…
 
     [Header("Climb Tuning")]
     public float climbStrength = 2.5f;
@@ -21,15 +21,16 @@ public class ClimbManager : MonoBehaviour
 
     [Header("Release / Gravity")]
     public float releaseGravity = 9.81f;
-    public float releaseSeconds = 0.25f; // 0.15–0.35
+    public float releaseSeconds = 0.25f;
 
     [Header("Stamina")]
     public float maxStamina = 100f;
     public float stamina = 100f;
-    public float drainPerSecond = 18f;      // gasto mientras agarras
-    public float regenPerSecond = 25f;      // recarga en suelo y sin agarrar
-    public float minStaminaToGrab = 15f;    // umbral para volver a agarrar
+    public float drainPerSecond = 18f;      //gasto mientras agarras
+    public float regenPerSecond = 25f;      //recarga en suelo y sin agarrar
+    public float minStaminaToGrab = 15f;    //umbral para volver a agarrar
     public bool outOfStamina = false;
+
 
     public float Stamina01 => maxStamina <= 0 ? 0 : stamina / maxStamina;
 
@@ -80,7 +81,6 @@ public class ClimbManager : MonoBehaviour
         lastHandPos = hand.HandWorldPos;
         smoothedApplied = Vector3.zero;
 
-        // cancela cualquier caída anterior
         releaseTimer = 0f;
         fallVelocity = 0f;
     }
@@ -105,7 +105,6 @@ public class ClimbManager : MonoBehaviour
     {
 
         UpdateStamina();
-        // Caída tras soltar (antes de devolver control al locomotor)
         if (!isClimbing && releaseTimer > 0f)
         {
             HandleReleaseFall();
@@ -120,7 +119,6 @@ public class ClimbManager : MonoBehaviour
 
         Vector3 move = -handDelta * climbStrength;
 
-        // Movimiento paralelo a la pared (vertical + lateral)
         Vector3 n = activeHand.WallNormal;
         if (n != Vector3.zero)
             move = Vector3.ProjectOnPlane(move, n);
@@ -137,7 +135,7 @@ public class ClimbManager : MonoBehaviour
 
     private void UpdateStamina()
     {
-        // ¿está agarrando alguna mano?
+
         bool anyGrabbing = false;
         for (int i = 0; i < hands.Count; i++)
         {
@@ -149,7 +147,6 @@ public class ClimbManager : MonoBehaviour
             }
         }
 
-        // grounded (si el BB expone algo mejor, lo cambiamos después)
         bool grounded = IsGroundedApprox();
 
         if (anyGrabbing)
@@ -159,38 +156,34 @@ public class ClimbManager : MonoBehaviour
         }
         else
         {
-            // recarga solo si estás en suelo
             if (grounded)
                 stamina = Mathf.Min(maxStamina, stamina + regenPerSecond * Time.deltaTime);
 
-            // sales del estado "agotado" al superar el umbral
             if (outOfStamina && stamina >= minStaminaToGrab)
                 outOfStamina = false;
         }
 
-        // Si te quedas sin stamina mientras escalas: suelta
         if (outOfStamina && isClimbing)
             ForceReleaseAllHands();
     }
 
     private bool IsGroundedApprox()
     {
-        // Raycast corto hacia abajo desde playerRoot
-        Vector3 origin = playerRoot.position + Vector3.up * 0.2f;
-        return Physics.Raycast(origin, Vector3.down, 0.35f, ~0, QueryTriggerInteraction.Ignore);
+        if (!ovrCharacterController) return false;
+
+        return ovrCharacterController.IsGrounded;
     }
+
 
 
     private void ForceReleaseAllHands()
     {
-        // Fuerza a las manos a salir de "grabbing"
         for (int i = 0; i < hands.Count; i++)
         {
             var h = hands[i];
             if (h) h.ForceRelease();
         }
 
-        // Para escalada (inicia caída como ya tienes)
         StopClimb();
     }
 
@@ -199,10 +192,8 @@ public class ClimbManager : MonoBehaviour
     {
         Transform ccT = ovrCharacterController.transform;
 
-        // ✅ Guarda LOCAL para revertir bien (evita teleports al re-sincronizar)
         Vector3 localBefore = ccT.localPosition;
 
-        // Guarda world solo para medir delta aplicado por colisiones
         Vector3 worldBefore = ccT.position;
 
         ovrCharacterController.Move(move);
@@ -218,7 +209,6 @@ public class ClimbManager : MonoBehaviour
 
         playerRoot.position += smoothedApplied;
 
-        // ✅ Revertir LOCAL, no WORLD
         ccT.localPosition = localBefore;
     }
 
@@ -248,7 +238,6 @@ public class ClimbManager : MonoBehaviour
         isClimbing = false;
         activeHand = null;
 
-        // Inicia caída natural (y mantenemos locomotion/safety apagados durante ese tiempo)
         releaseTimer = releaseSeconds;
         fallVelocity = 0f;
         smoothedApplied = Vector3.zero;

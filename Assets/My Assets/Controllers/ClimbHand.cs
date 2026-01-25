@@ -10,12 +10,22 @@ public class ClimbHand : MonoBehaviour
 
     [Header("Climbable")]
     public LayerMask climbableMask;
+    [Header("Hand Visual (to tint)")]
+    public Renderer handRenderer;
+    public string colorProperty = "_BaseColor";
 
-    [Header("Visual Debug")]
-    public MeshRenderer handRenderer;
-    public Material freeMat;
-    public Material touchMat;
-    public Material grabMat;
+    [Header("Stamina Colors")]
+    public Color highColor = new Color(0.2f, 1f, 0.2f, 1f);
+    public Color midColor  = new Color(1f, 0.85f, 0.2f, 1f);
+    public Color lowColor  = new Color(1f, 0.25f, 0.25f, 1f);
+    public float lowThreshold = 0.25f;
+    public float midThreshold = 0.6f;
+
+    // [Header("Visual Debug")]
+    // public MeshRenderer handRenderer;
+    // public Material freeMat;
+    // public Material touchMat;
+    // public Material grabMat;
 
     public bool IsGrabbing { get; private set; }
     public bool HasClimbContact => climbContacts > 0;
@@ -23,6 +33,13 @@ public class ClimbHand : MonoBehaviour
     public Vector3 HandWorldPos => transform.position;
 
     private int climbContacts = 0;
+
+    private MaterialPropertyBlock _mpb;
+
+    private void Awake()
+    {
+        _mpb = new MaterialPropertyBlock();
+    }
 
     private void OnEnable()
     {
@@ -39,6 +56,8 @@ public class ClimbHand : MonoBehaviour
 
     private void Update()
     {
+        UpdateHandColor();
+
         float v = grabAction.action.ReadValue<float>();
         bool pressed = v >= pressThreshold;
 
@@ -110,6 +129,32 @@ public class ClimbHand : MonoBehaviour
         // visual
         // if (HasClimbContact) SetTouch();
         // else SetFree();
+    }
+
+    private void UpdateHandColor()
+    {
+        if (!handRenderer || climbManager == null) return;
+
+        float s = Mathf.Clamp01(climbManager.Stamina01);
+
+        Color c;
+        if (s <= lowThreshold) c = lowColor;
+        else if (s <= midThreshold)
+        {
+            // interpolate low->mid across [lowThreshold, midThreshold]
+            float t = Mathf.InverseLerp(lowThreshold, midThreshold, s);
+            c = Color.Lerp(lowColor, midColor, t);
+        }
+        else
+        {
+            // interpolate mid->high across [midThreshold, 1]
+            float t = Mathf.InverseLerp(midThreshold, 1f, s);
+            c = Color.Lerp(midColor, highColor, t);
+        }
+
+        handRenderer.GetPropertyBlock(_mpb);
+        _mpb.SetColor(colorProperty, c);
+        handRenderer.SetPropertyBlock(_mpb);
     }
 
 
