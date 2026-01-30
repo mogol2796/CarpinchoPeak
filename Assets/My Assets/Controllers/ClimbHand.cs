@@ -32,6 +32,9 @@ public class ClimbHand : MonoBehaviour
     public Vector3 WallNormal { get; private set; } = Vector3.zero;
     public Vector3 HandWorldPos => transform.position;
 
+    public Vector3 LockedNormal { get; private set; }
+
+
     private int climbContacts = 0;
 
     private MaterialPropertyBlock _mpb;
@@ -76,6 +79,9 @@ public class ClimbHand : MonoBehaviour
             {
                 IsGrabbing = true;
                 // SetGrab();
+                LockedNormal = WallNormal;
+                if (LockedNormal == Vector3.zero) LockedNormal = transform.forward * -1f;
+
                 climbManager?.TryBeginClimb(this);
             }
         }
