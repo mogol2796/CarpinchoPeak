@@ -10,6 +10,7 @@ public class ClimbHand : MonoBehaviour
 
     [Header("Climbable")]
     public LayerMask climbableMask;
+
     [Header("Hand Visual (to tint)")]
     public Renderer handRenderer;
     public string colorProperty = "_BaseColor";
@@ -21,22 +22,23 @@ public class ClimbHand : MonoBehaviour
     public float lowThreshold = 0.25f;
     public float midThreshold = 0.6f;
 
-    // [Header("Visual Debug")]
-    // public MeshRenderer handRenderer;
-    // public Material freeMat;
-    // public Material touchMat;
-    // public Material grabMat;
+    [Header("Grab Anchor")]
+    public float grabPointSearchRadius = 0.18f; // 0.12–0.25 suele ir bien
 
     public bool IsGrabbing { get; private set; }
     public bool HasClimbContact => climbContacts > 0;
+
     public Vector3 WallNormal { get; private set; } = Vector3.zero;
-    public Vector3 HandWorldPos => transform.position;
+    public Vector3 LockedNormal { get; private set; } = Vector3.zero;
 
-    public Vector3 LockedNormal { get; private set; }
+    // ✅ Punto de agarre pegado a la pared
+    public Vector3 GrabPointWorld { get; private set; }
+    public bool HasGrabPoint { get; private set; }
 
+    // ✅ ESTA es la posición que debe usar ClimbManager
+    public Vector3 HandWorldPosForClimb => (IsGrabbing && HasGrabPoint) ? GrabPointWorld : transform.position;
 
     private int climbContacts = 0;
-
     private MaterialPropertyBlock _mpb;
 
     private void Awake()
@@ -48,7 +50,6 @@ public class ClimbHand : MonoBehaviour
     {
         grabAction.action?.Enable();
         climbManager?.RegisterHand(this);
-        // SetFree();
     }
 
     private void OnDisable()
@@ -64,25 +65,27 @@ public class ClimbHand : MonoBehaviour
         float v = grabAction.action.ReadValue<float>();
         bool pressed = v >= pressThreshold;
 
-        if (pressed && climbContacts > 0)
+        if (pressed && HasClimbContact)
         {
             if (climbManager != null && climbManager.outOfStamina)
             {
-                // no puede agarrar, solo muestra touch/free según contacto
-                IsGrabbing = false;
-                // if (climbContacts > 0) SetTouch();
-                // else SetFree();
+                // no puede agarrar
+                ForceRelease();
                 return;
             }
 
             if (!IsGrabbing)
             {
                 IsGrabbing = true;
-                // SetGrab();
-                LockedNormal = WallNormal;
-                if (LockedNormal == Vector3.zero) LockedNormal = transform.forward * -1f;
 
+                // ✅ bloquea normal + grab point
+                UpdateGrabPointAndNormal();
                 climbManager?.TryBeginClimb(this);
+            }
+            else
+            {
+                // ✅ mientras agarra, mantén el grabpoint pegado a superficie
+                UpdateGrabPointAndNormal();
             }
         }
         else
@@ -90,21 +93,76 @@ public class ClimbHand : MonoBehaviour
             if (IsGrabbing)
             {
                 IsGrabbing = false;
+                LockedNormal = Vector3.zero;
+                HasGrabPoint = false;
                 climbManager?.TryEndClimb(this);
             }
+        }
+    }
 
-            // if (climbContacts > 0) SetTouch();
-            // else SetFree();
+    private void UpdateGrabPointAndNormal()
+    {
+        Vector3 origin = transform.position;
+
+        // buscamos colliders cercanos en climbable
+        Collider[] cols = Physics.OverlapSphere(origin, grabPointSearchRadius, climbableMask, QueryTriggerInteraction.Ignore);
+
+        if (cols.Length == 0)
+        {
+            // si no encontramos nada, no bloquees escalada: usa fallback
+            HasGrabPoint = false;
+            if (LockedNormal == Vector3.zero)
+                LockedNormal = (WallNormal != Vector3.zero) ? WallNormal : (-transform.forward);
+            return;
+        }
+
+        // elegimos el collider con closestPoint más cercano
+        Collider best = null;
+        Vector3 bestPoint = Vector3.zero;
+        float bestSqr = float.PositiveInfinity;
+
+        for (int i = 0; i < cols.Length; i++)
+        {
+            Collider c = cols[i];
+            if (!c) continue;
+
+            Vector3 p = c.ClosestPoint(origin);
+            float d = (origin - p).sqrMagnitude;
+            if (d < bestSqr)
+            {
+                bestSqr = d;
+                best = c;
+                bestPoint = p;
+            }
+        }
+
+        if (!best)
+        {
+            HasGrabPoint = false;
+            return;
+        }
+
+        GrabPointWorld = bestPoint;
+        HasGrabPoint = true;
+
+        // normal estable
+        Vector3 n = origin - bestPoint;
+        if (n.sqrMagnitude > 0.0001f)
+        {
+            LockedNormal = n.normalized; // normal "hacia fuera" de la pared
+        }
+        else
+        {
+            // si estás exactamente sobre el punto, usa la última normal conocida
+            if (LockedNormal == Vector3.zero)
+                LockedNormal = (WallNormal != Vector3.zero) ? WallNormal : (-transform.forward);
         }
     }
 
     private void OnTriggerEnter(Collider other)
     {
         if (((1 << other.gameObject.layer) & climbableMask) != 0)
-        {
             climbContacts++;
-            // if (!IsGrabbing) SetTouch();
-        }
     }
 
     private void OnTriggerExit(Collider other)
@@ -115,26 +173,33 @@ public class ClimbHand : MonoBehaviour
             if (climbContacts == 0)
             {
                 WallNormal = Vector3.zero;
-                // if (!IsGrabbing) SetFree();
+
+                if (!IsGrabbing)
+                {
+                    LockedNormal = Vector3.zero;
+                    HasGrabPoint = false;
+                }
             }
         }
     }
 
     private void OnTriggerStay(Collider other)
     {
+        if (IsGrabbing) return;
+
         if (((1 << other.gameObject.layer) & climbableMask) == 0) return;
 
         Vector3 p = other.ClosestPoint(transform.position);
         Vector3 n = transform.position - p;
-        if (n.sqrMagnitude > 0.0001f) WallNormal = n.normalized;
+        if (n.sqrMagnitude > 0.0001f)
+            WallNormal = n.normalized;
     }
 
     public void ForceRelease()
     {
         IsGrabbing = false;
-        // visual
-        // if (HasClimbContact) SetTouch();
-        // else SetFree();
+        LockedNormal = Vector3.zero;
+        HasGrabPoint = false;
     }
 
     private void UpdateHandColor()
@@ -147,13 +212,11 @@ public class ClimbHand : MonoBehaviour
         if (s <= lowThreshold) c = lowColor;
         else if (s <= midThreshold)
         {
-            // interpolate low->mid across [lowThreshold, midThreshold]
             float t = Mathf.InverseLerp(lowThreshold, midThreshold, s);
             c = Color.Lerp(lowColor, midColor, t);
         }
         else
         {
-            // interpolate mid->high across [midThreshold, 1]
             float t = Mathf.InverseLerp(midThreshold, 1f, s);
             c = Color.Lerp(midColor, highColor, t);
         }
@@ -162,9 +225,4 @@ public class ClimbHand : MonoBehaviour
         _mpb.SetColor(colorProperty, c);
         handRenderer.SetPropertyBlock(_mpb);
     }
-
-
-    // private void SetFree()  { if (handRenderer) handRenderer.material = freeMat; }
-    // private void SetTouch() { if (handRenderer) handRenderer.material = touchMat; }
-    // private void SetGrab()  { if (handRenderer) handRenderer.material = grabMat; }
 }

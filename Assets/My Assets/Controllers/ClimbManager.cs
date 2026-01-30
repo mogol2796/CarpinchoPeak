@@ -6,24 +6,22 @@ using OvrCharacterController = Oculus.Interaction.Locomotion.CharacterController
 public class ClimbManager : MonoBehaviour
 {
     [Header("Refs (Building Blocks)")]
-    public Transform playerRoot;                           // GameObject "Player" (root del rig)
-    public OvrCharacterController ovrCharacterController;   // Locomotor/PlayerController (BB)
+    public Transform playerRoot;
+    public OvrCharacterController ovrCharacterController;
 
     [Header("Disable while climbing/mantling (BB safety)")]
-    public MonoBehaviour[] disableWhileClimbing;           // WallPenetrationTunneling, SmoothMovementTunneling…
-
-    [Header("Body Collider (Anti-penetration)")]
-    public CapsuleCollider bodyCollider;                   // CapsuleCollider NO trigger (hijo de playerRoot)
-    public LayerMask climbableMask;                        // Layer(s) de paredes escalables
-    public LayerMask worldCollisionMask; // pon aquí Default/Environment/Climbable/etc
-
+    public MonoBehaviour[] disableWhileClimbing;
 
     [Header("Climb Tuning")]
     public float climbStrength = 2.5f;
     public float maxClimbSpeed = 6f;
 
-    [Header("Smoothing")]
-    public float moveSmoothing = 20f; // 10–30
+    [Header("Climb Jitter Filter")]
+    public float handDeadzone = 0.006f;   // 3–8 mm
+    public float handFilter = 22f;        // 15–35 (más alto = más estable)
+
+    [Header("Smoothing (used for non-climb moves)")]
+    public float moveSmoothing = 20f;
 
     [Header("Release / Gravity")]
     public float releaseGravity = 9.81f;
@@ -39,18 +37,20 @@ public class ClimbManager : MonoBehaviour
     public float Stamina01 => maxStamina <= 0 ? 0 : stamina / maxStamina;
 
     [Header("Mantle (by Zone)")]
-    public InputActionProperty mantleAction;  // Botón (ej A)
+    public InputActionProperty mantleAction;
     public float mantleDuration = 0.25f;
-    public float mantleFallbackUp = 0.55f;       // si no hay standPoint
-    public float mantleFallbackForward = 0.35f;  // si no hay standPoint
+    public float mantleFallbackUp = 0.55f;
+    public float mantleFallbackForward = 0.35f;
 
-    // ---- runtime
     private readonly List<ClimbHand> hands = new();
     private ClimbHand activeHand;
     private bool isClimbing;
 
     private Vector3 lastHandPos;
     private Vector3 smoothedApplied;
+
+    // filtro de jitter
+    private Vector3 filteredHandDelta = Vector3.zero;
 
     private float releaseTimer = 0f;
     private float fallVelocity = 0f;
@@ -62,12 +62,11 @@ public class ClimbManager : MonoBehaviour
 
     private MantleZone currentZone;
 
-    /* ===========================
-       Public helpers
-       =========================== */
-
     public bool IsClimbing => isClimbing;
     public bool IsMantling => isMantling;
+
+    private void OnEnable() => mantleAction.action?.Enable();
+    private void OnDisable() => mantleAction.action?.Disable();
 
     public void SetMantleZone(MantleZone z) => currentZone = z;
 
@@ -82,10 +81,6 @@ public class ClimbManager : MonoBehaviour
         if (hand == activeHand) StopClimb();
     }
 
-    /* ===========================
-       Climb start/stop
-       =========================== */
-
     public void TryBeginClimb(ClimbHand hand)
     {
         if (outOfStamina) return;
@@ -99,14 +94,16 @@ public class ClimbManager : MonoBehaviour
         if (!isClimbing)
         {
             isClimbing = true;
-
             if (disableWhileClimbing != null)
                 foreach (var b in disableWhileClimbing)
                     if (b) b.enabled = false;
         }
 
-        lastHandPos = hand.HandWorldPos;
+        lastHandPos = hand.HandWorldPosForClimb;
         smoothedApplied = Vector3.zero;
+
+        // reset filtro (importantísimo para que no “salte”)
+        filteredHandDelta = Vector3.zero;
 
         releaseTimer = 0f;
         fallVelocity = 0f;
@@ -116,12 +113,15 @@ public class ClimbManager : MonoBehaviour
     {
         if (hand == null || hand != activeHand) return;
 
-        ClimbHand fallback = FindFallbackHand(hand);
-        if (fallback != null)
+        var fb = FindFallbackHand(hand);
+        if (fb != null)
         {
-            activeHand = fallback;
-            lastHandPos = fallback.HandWorldPos;
+            activeHand = fb;
+            lastHandPos = fb.HandWorldPosForClimb;
             smoothedApplied = Vector3.zero;
+
+            // reset filtro al cambiar de mano
+            filteredHandDelta = Vector3.zero;
             return;
         }
 
@@ -133,6 +133,9 @@ public class ClimbManager : MonoBehaviour
         isClimbing = false;
         activeHand = null;
 
+        // reset filtro al soltar
+        filteredHandDelta = Vector3.zero;
+
         if (isMantling) return;
 
         releaseTimer = releaseSeconds;
@@ -140,78 +143,124 @@ public class ClimbManager : MonoBehaviour
         smoothedApplied = Vector3.zero;
     }
 
-    /* ===========================
-       Main loop
-       =========================== */
-
-    private void OnEnable() => mantleAction.action?.Enable();
-    private void OnDisable() => mantleAction.action?.Disable();
-
-    private void LateUpdate()
+    // ✅ CAMBIO: Update() en vez de LateUpdate()
+    private void Update()
     {
-        // Mantle input (zona + botón)
+        // Mantle por zona
         if (!isMantling && currentZone && mantleAction.action != null && mantleAction.action.WasPressedThisFrame())
         {
             StartMantle(currentZone);
             return;
         }
 
-        // Mantle motion
         if (isMantling)
         {
             UpdateMantle();
             return;
         }
 
-        // Stamina (siempre)
         UpdateStamina();
 
-        // Caída tras soltar
         if (!isClimbing && releaseTimer > 0f)
         {
             HandleReleaseFall();
             return;
         }
 
-        // Movimiento de escalada
         if (!isClimbing || activeHand == null || !ovrCharacterController || !playerRoot)
             return;
 
-        Vector3 current = activeHand.HandWorldPos;
-        Vector3 handDelta = current - lastHandPos;
+        Vector3 current = activeHand.HandWorldPosForClimb;
 
-        Vector3 move = -handDelta * climbStrength;
+        // --- jitter filter (deadzone + low-pass) ---
+        Vector3 rawDelta = current - lastHandPos;
 
-        // Evita “meterte” hacia la pared con normal de la mano (útil, pero no suficiente)
-        Vector3 n = activeHand.WallNormal;
-        // Vector3 n = activeHand.LockedNormal;
+        if (rawDelta.magnitude < handDeadzone)
+            rawDelta = Vector3.zero;
+
+        filteredHandDelta = Vector3.Lerp(
+            filteredHandDelta,
+            rawDelta,
+            1f - Mathf.Exp(-handFilter * Time.deltaTime)
+        );
+
+        Vector3 move = -filteredHandDelta * climbStrength;
+
+        // ✅ CLAVE: NO dejar componente normal (ni hacia dentro ni hacia fuera)
+        Vector3 n = activeHand.LockedNormal;
         if (n != Vector3.zero)
         {
-            // solo bloquea la componente hacia dentro (más estable que ProjectOnPlane)
-            float into = Vector3.Dot(move, n);
-            if (into < 0f) move -= n * into;
+            move = Vector3.ProjectOnPlane(move, n);
         }
 
-        // clamp velocidad
         float maxStep = maxClimbSpeed * Time.deltaTime;
         if (move.magnitude > maxStep) move = move.normalized * maxStep;
 
-        ApplyMoveWithCollision(move);
-
-        // Solo empujar fuera si el movimiento iba hacia la pared
-        Vector3 n2 = activeHand.WallNormal;
-        if (n2 != Vector3.zero && Vector3.Dot(move, n2) < 0f)
-        {
-            ResolveBodyPenetration();
-        }
-
+        // ✅ CLAVE: durante escalada, SIN smoothing
+        ApplyMoveWithCollision_NoSmooth(move);
 
         lastHandPos = current;
     }
 
-    /* ===========================
-       Stamina
-       =========================== */
+    private void ApplyMoveWithCollision(Vector3 move)
+    {
+        Transform ccT = ovrCharacterController.transform;
+
+        Vector3 localBefore = ccT.localPosition;
+        Vector3 worldBefore = ccT.position;
+
+        ovrCharacterController.Move(move);
+
+        Vector3 worldAfter = ccT.position;
+        Vector3 appliedDelta = worldAfter - worldBefore;
+
+        smoothedApplied = Vector3.Lerp(
+            smoothedApplied,
+            appliedDelta,
+            1f - Mathf.Exp(-moveSmoothing * Time.deltaTime)
+        );
+
+        playerRoot.position += smoothedApplied;
+
+        ccT.localPosition = localBefore;
+    }
+
+    private void ApplyMoveWithCollision_NoSmooth(Vector3 move)
+    {
+        Transform ccT = ovrCharacterController.transform;
+
+        Vector3 localBefore = ccT.localPosition;
+        Vector3 worldBefore = ccT.position;
+
+        ovrCharacterController.Move(move);
+
+        Vector3 worldAfter = ccT.position;
+        Vector3 appliedDelta = worldAfter - worldBefore;
+
+        playerRoot.position += appliedDelta;
+
+        ccT.localPosition = localBefore;
+    }
+
+    private void HandleReleaseFall()
+    {
+        releaseTimer -= Time.deltaTime;
+
+        fallVelocity -= releaseGravity * Time.deltaTime;
+        Vector3 fallMove = Vector3.up * fallVelocity * Time.deltaTime;
+
+        // aquí sí puedes dejar smoothing si te gusta
+        ApplyMoveWithCollision(fallMove);
+
+        if (releaseTimer <= 0f)
+        {
+            smoothedApplied = Vector3.zero;
+
+            if (disableWhileClimbing != null)
+                foreach (var b in disableWhileClimbing)
+                    if (b) b.enabled = true;
+        }
+    }
 
     private void UpdateStamina()
     {
@@ -256,125 +305,6 @@ public class ClimbManager : MonoBehaviour
         StopClimb();
     }
 
-    /* ===========================
-       Move + collision (BB)
-       =========================== */
-
-    private void ApplyMoveWithCollision(Vector3 move)
-    {
-        Transform ccT = ovrCharacterController.transform;
-
-        // guardamos local pos para no “despegar” el CC del rig
-        Vector3 localBefore = ccT.localPosition;
-
-        Vector3 worldBefore = ccT.position;
-
-        ovrCharacterController.Move(move);
-
-        Vector3 worldAfter = ccT.position;
-        Vector3 appliedDelta = worldAfter - worldBefore;
-
-        smoothedApplied = Vector3.Lerp(
-            smoothedApplied,
-            appliedDelta,
-            1f - Mathf.Exp(-moveSmoothing * Time.deltaTime)
-        );
-
-        playerRoot.position += smoothedApplied;
-
-        // revert CC local
-        ccT.localPosition = localBefore;
-    }
-
-    private void ApplyMoveWithCollision_NoSmooth(Vector3 move)
-    {
-        Transform ccT = ovrCharacterController.transform;
-
-        Vector3 localBefore = ccT.localPosition;
-        Vector3 worldBefore = ccT.position;
-
-        ovrCharacterController.Move(move);
-
-        Vector3 worldAfter = ccT.position;
-        Vector3 appliedDelta = worldAfter - worldBefore;
-
-        // SIN smoothing
-        playerRoot.position += appliedDelta;
-
-        ccT.localPosition = localBefore;
-    }
-
-
-    /* ===========================
-       Anti-penetration (BodyCollider)
-       =========================== */
-
-    private void ResolveBodyPenetration()
-    {
-        if (!bodyCollider || !playerRoot) return;
-
-        // Asegura que el collider esté donde toca
-        // (si es hijo del playerRoot normalmente ya está)
-
-        // OverlapCapsule usando geometría del CapsuleCollider
-        Vector3 center = bodyCollider.transform.TransformPoint(bodyCollider.center);
-
-        float radius = bodyCollider.radius * Mathf.Max(bodyCollider.transform.lossyScale.x, bodyCollider.transform.lossyScale.z);
-        float height = Mathf.Max(bodyCollider.height * bodyCollider.transform.lossyScale.y, radius * 2f);
-
-        Vector3 up = bodyCollider.transform.up;
-
-        float half = Mathf.Max(0f, (height * 0.5f) - radius);
-        Vector3 p1 = center + up * half;
-        Vector3 p2 = center - up * half;
-
-        Collider[] hits = Physics.OverlapCapsule(p1, p2, radius, worldCollisionMask, QueryTriggerInteraction.Ignore);
-
-        for (int i = 0; i < hits.Length; i++)
-        {
-            Collider other = hits[i];
-            if (!other || other == bodyCollider) continue;
-
-            if (Physics.ComputePenetration(
-                bodyCollider, bodyCollider.transform.position, bodyCollider.transform.rotation,
-                other, other.transform.position, other.transform.rotation,
-                out Vector3 dir, out float dist))
-            {
-                // empuja al playerRoot fuera de la pared
-                Vector3 push = dir * (dist + 0.001f);
-                ApplyMoveWithCollision_NoSmooth(push);
-
-            }
-        }
-    }
-
-    /* ===========================
-       Release fall
-       =========================== */
-
-    private void HandleReleaseFall()
-    {
-        releaseTimer -= Time.deltaTime;
-
-        fallVelocity -= releaseGravity * Time.deltaTime;
-        Vector3 fallMove = Vector3.up * fallVelocity * Time.deltaTime;
-
-        ApplyMoveWithCollision(fallMove);
-
-        if (releaseTimer <= 0f)
-        {
-            smoothedApplied = Vector3.zero;
-
-            if (disableWhileClimbing != null)
-                foreach (var b in disableWhileClimbing)
-                    if (b) b.enabled = true;
-        }
-    }
-
-    /* ===========================
-       Mantle (Zone)
-       =========================== */
-
     private void StartMantle(MantleZone zone)
     {
         if (zone == null || !playerRoot || !ovrCharacterController) return;
@@ -382,25 +312,22 @@ public class ClimbManager : MonoBehaviour
         isMantling = true;
         mantleT = 0f;
 
-        // corta escalada + caída
         isClimbing = false;
         activeHand = null;
         releaseTimer = 0f;
         fallVelocity = 0f;
         smoothedApplied = Vector3.zero;
 
+        // reset filtro al empezar mantle
+        filteredHandDelta = Vector3.zero;
+
         mantleStart = playerRoot.position;
 
         if (zone.standPoint != null)
-        {
             mantleTarget = zone.standPoint.position;
-        }
         else
-        {
             mantleTarget = mantleStart + Vector3.up * mantleFallbackUp + playerRoot.forward * mantleFallbackForward;
-        }
 
-        // durante mantle, desactiva safety (opcional)
         if (disableWhileClimbing != null)
             foreach (var b in disableWhileClimbing)
                 if (b) b.enabled = false;
@@ -410,31 +337,23 @@ public class ClimbManager : MonoBehaviour
     {
         mantleT += Time.deltaTime / Mathf.Max(0.01f, mantleDuration);
         float t = Mathf.Clamp01(mantleT);
-
-        // smoothstep
         t = t * t * (3f - 2f * t);
 
         Vector3 desired = Vector3.Lerp(mantleStart, mantleTarget, t);
         Vector3 delta = desired - playerRoot.position;
 
-        ApplyMoveWithCollision(delta);
-        ResolveBodyPenetration();
+        ApplyMoveWithCollision_NoSmooth(delta);
 
         if (mantleT >= 1f)
         {
             isMantling = false;
             smoothedApplied = Vector3.zero;
 
-            // reactiva safety
             if (disableWhileClimbing != null)
                 foreach (var b in disableWhileClimbing)
                     if (b) b.enabled = true;
         }
     }
-
-    /* ===========================
-       Utils
-       =========================== */
 
     private ClimbHand FindFallbackHand(ClimbHand ignored)
     {

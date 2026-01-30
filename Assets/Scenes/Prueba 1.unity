@@ -7774,13 +7774,6 @@ MonoBehaviour:
   ovrCharacterController: {fileID: 2041770856}
   disableWhileClimbing:
   - {fileID: 321523492}
-  bodyCollider: {fileID: 2116603001}
-  climbableMask:
-    serializedVersion: 2
-    m_Bits: 8
-  worldCollisionMask:
-    serializedVersion: 2
-    m_Bits: 9
   climbStrength: 2.5
   maxClimbSpeed: 6
   moveSmoothing: 20
@@ -7792,6 +7785,11 @@ MonoBehaviour:
   regenPerSecond: 25
   minStaminaToGrab: 15
   outOfStamina: 0
+  climbableMask:
+    serializedVersion: 2
+    m_Bits: 8
+  grabValidateRay: 0.12
+  grabMaxSurfaceAngle: 80
   mantleAction:
     m_UseReference: 1
     m_Action:
@@ -12341,11 +12339,6 @@ Transform:
   - {fileID: 1460295470}
   m_Father: {fileID: 500530790}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!136 &2116603001 stripped
-CapsuleCollider:
-  m_CorrespondingSourceObject: {fileID: 3903482225804038118, guid: 0a7d2469f24041c4284c66706f84c45e, type: 3}
-  m_PrefabInstance: {fileID: 321523488}
-  m_PrefabAsset: {fileID: 0}
 --- !u!4 &2116603003 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3903482225804038112, guid: 0a7d2469f24041c4284c66706f84c45e, type: 3}
