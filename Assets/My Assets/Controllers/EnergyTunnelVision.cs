@@ -9,9 +9,9 @@ public class EnergyTunnelVision : MonoBehaviour
     public Volume volume;
 
     [Header("Thresholds (energy current)")]
-    public float t1 = 50f;  // empieza túnel
-    public float t2 = 30f;  // más fuerte
-    public float t3 = 15f;  // crítico
+    public float t1 = 50f;
+    public float t2 = 30f;
+    public float t3 = 15f;
 
     [Header("Vignette Intensities")]
     [Range(0f, 1f)] public float i1 = 0.25f;
@@ -44,7 +44,7 @@ public class EnergyTunnelVision : MonoBehaviour
     {
         if (!player || _vig == null) return;
 
-        float e = player.energy; // energía ACTUAL, no maxEnergy
+        float e = player.energy;
         float target = GetTargetIntensity(e);
 
         _currentIntensity = Mathf.Lerp(_currentIntensity, target, 1f - Mathf.Exp(-lerpSpeed * Time.deltaTime));
@@ -53,24 +53,20 @@ public class EnergyTunnelVision : MonoBehaviour
 
     float GetTargetIntensity(float e)
     {
-        // Por encima de t1: nada
         if (e >= t1) return 0f;
 
-        // Entre t1 y t2: 0 -> i1
         if (e >= t2)
         {
-            float t = Mathf.InverseLerp(t1, t2, e); // e baja => t baja
-            return Mathf.Lerp(i1, 0f, t);           // cuando e=t1 => 0, cuando e=t2 => i1
+            float t = Mathf.InverseLerp(t1, t2, e);
+            return Mathf.Lerp(i1, 0f, t);
         }
 
-        // Entre t2 y t3: i1 -> i2
         if (e >= t3)
         {
             float t = Mathf.InverseLerp(t2, t3, e);
-            return Mathf.Lerp(i2, i1, t);           // e=t2 => i1, e=t3 => i2
+            return Mathf.Lerp(i2, i1, t);
         }
 
-        // Debajo de t3: i3 (crítico)
         return i3;
     }
 }
