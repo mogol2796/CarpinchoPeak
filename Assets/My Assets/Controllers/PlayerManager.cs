@@ -61,21 +61,19 @@ public class PlayerManager : MonoBehaviour
         energy = Mathf.Min(energy, maxEnergy);
     }
 
-    public void AddHunger(float amount)
+    public void TakeDamage(float dmg)
     {
-        hunger = Mathf.Clamp(hunger + amount, 0f, 100f);
+        health = Mathf.Clamp(health - dmg, 0f, 100f);
     }
 
-    public void AddCold(float amount)
-    {
-        cold = Mathf.Clamp(cold + amount, 0f, 100f);
-    }
-
-    public void AddHealth(float amount)
+    public void Heal(float amount)
     {
         health = Mathf.Clamp(health + amount, 0f, 100f);
     }
 
-
+    public void Eat(float amount)
+    {
+        hunger = Mathf.Clamp(hunger + amount, 0f, 100f);
+    }
 
 }
