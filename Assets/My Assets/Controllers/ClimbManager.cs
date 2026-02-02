@@ -8,6 +8,7 @@ public class ClimbManager : MonoBehaviour
     [Header("Refs (Building Blocks)")]
     public Transform playerRoot;
     public OvrCharacterController ovrCharacterController;
+    public PlayerManager playerManager;
 
     [Header("Disable while climbing/mantling (BB safety)")]
     public MonoBehaviour[] disableWhileClimbing;
@@ -28,13 +29,13 @@ public class ClimbManager : MonoBehaviour
     public float releaseSeconds = 0.25f;
 
     [Header("Stamina")]
-    public float maxStamina = 100f;
-    public float stamina = 100f;
+    // public float maxStamina = 100f;
+    // public float stamina = 100f;
     public float drainPerSecond = 18f;
     public float regenPerSecond = 25f;
     public float minStaminaToGrab = 15f;
-    public bool outOfStamina = false;
-    public float Stamina01 => maxStamina <= 0 ? 0 : stamina / maxStamina;
+    // public bool outOfStamina = false;
+    // public float Stamina01 => maxStamina <= 0 ? 0 : stamina / maxStamina;
 
     [Header("Mantle (by Zone)")]
     public InputActionProperty mantleAction;
@@ -83,7 +84,7 @@ public class ClimbManager : MonoBehaviour
 
     public void TryBeginClimb(ClimbHand hand)
     {
-        if (outOfStamina) return;
+        if (playerManager.outOfStamina) return;
         if (isMantling) return;
 
         if (hand == null || !hand.IsGrabbing || !hand.HasClimbContact) return;
@@ -279,19 +280,19 @@ public class ClimbManager : MonoBehaviour
 
         if (anyGrabbing)
         {
-            stamina = Mathf.Max(0f, stamina - drainPerSecond * Time.deltaTime);
-            if (stamina <= 0f) outOfStamina = true;
+            playerManager.energy = Mathf.Max(0f, playerManager.energy - drainPerSecond * Time.deltaTime);
+            if (playerManager.energy <= 0f) playerManager.outOfStamina = true;
         }
         else
         {
             if (grounded)
-                stamina = Mathf.Min(maxStamina, stamina + regenPerSecond * Time.deltaTime);
+                playerManager.energy = Mathf.Min(playerManager.maxEnergy, playerManager.energy + regenPerSecond * Time.deltaTime);
 
-            if (outOfStamina && stamina >= minStaminaToGrab)
-                outOfStamina = false;
+            if (playerManager.outOfStamina && playerManager.energy >= minStaminaToGrab)
+                playerManager.outOfStamina = false;
         }
 
-        if (outOfStamina && isClimbing)
+        if (playerManager.outOfStamina && isClimbing)
             ForceReleaseAllHands();
     }
 

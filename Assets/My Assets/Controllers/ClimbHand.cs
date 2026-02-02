@@ -67,7 +67,7 @@ public class ClimbHand : MonoBehaviour
 
         if (pressed && HasClimbContact)
         {
-            if (climbManager != null && climbManager.outOfStamina)
+            if (climbManager != null && climbManager.playerManager.outOfStamina)
             {
                 // no puede agarrar
                 ForceRelease();
@@ -206,7 +206,7 @@ public class ClimbHand : MonoBehaviour
     {
         if (!handRenderer || climbManager == null) return;
 
-        float s = Mathf.Clamp01(climbManager.Stamina01);
+        float s = Mathf.Clamp01(climbManager.playerManager.energy / climbManager.playerManager.maxEnergy);
 
         Color c;
         if (s <= lowThreshold) c = lowColor;
