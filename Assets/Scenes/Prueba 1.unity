@@ -1030,6 +1030,7 @@ Transform:
   - {fileID: 15095507}
   - {fileID: 1292911990}
   - {fileID: 102686758}
+  - {fileID: 1999253664}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &100795414
@@ -1139,6 +1140,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnergyTunnelVision
   player: {fileID: 102686759}
   volume: {fileID: 668141868}
+  lowEnergyHaptics: {fileID: 1999253662}
   t1: 50
   t2: 30
   t3: 15
@@ -13425,7 +13427,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b9dc93c7e1ae142448d4a122be86ea8d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Oculus.Haptics::Oculus.Haptics.HapticSource
-  _clip: {fileID: 0}
+  _clip: {fileID: 2460798210113038985, guid: dde55e13c542f48c186587cca063eac8, type: 3}
   _controller: 2
   _loop: 0
   _amplitude: 1
@@ -13457,12 +13459,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1999253661}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: -1.25, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 99624232}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2010733327
 GameObject:
@@ -14225,6 +14227,5 @@ SceneRoots:
   - {fileID: 581415730}
   - {fileID: 1684084703}
   - {fileID: 99624232}
-  - {fileID: 1999253664}
   - {fileID: 599671746}
   - {fileID: 668141869}
