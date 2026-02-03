@@ -1248,6 +1248,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 421250803}
     - target: {fileID: 2131382857960937423, guid: 49c8b6027741ac24d986f9eefc6f7a44, type: 3}
+      propertyPath: m_Convex
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2131382857960937423, guid: 49c8b6027741ac24d986f9eefc6f7a44, type: 3}
       propertyPath: m_ProvidesContacts
       value: 1
       objectReference: {fileID: 0}
@@ -1728,6 +1732,10 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 2328877874872478577, guid: a7ec3f82f09413647b52783ec8849127, type: 3}
+      propertyPath: _layerMask.m_Bits
+      value: 15
+      objectReference: {fileID: 0}
     - target: {fileID: 2402318345785887186, guid: a7ec3f82f09413647b52783ec8849127, type: 3}
       propertyPath: m_SizeDelta.y
       value: 0
@@ -1952,6 +1960,10 @@ PrefabInstance:
       propertyPath: triggerAction.m_Reference
       value: 
       objectReference: {fileID: 1128013997}
+    - target: {fileID: 7943573713345244620, guid: a7ec3f82f09413647b52783ec8849127, type: 3}
+      propertyPath: _skinWidth
+      value: 0.05
+      objectReference: {fileID: 0}
     - target: {fileID: 8027650662154002033, guid: a7ec3f82f09413647b52783ec8849127, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0

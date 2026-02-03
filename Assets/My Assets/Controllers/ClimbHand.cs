@@ -104,7 +104,21 @@ public class ClimbHand : MonoBehaviour
     {
         Vector3 origin = transform.position;
 
-        // buscamos colliders cercanos en climbable
+        // 1) Intenta un SphereCast hacia la superficie para obtener punto + normal estables en mallas irregulares
+        Vector3 outward = (LockedNormal != Vector3.zero) ? LockedNormal : WallNormal;
+        Vector3 castDir = (outward != Vector3.zero) ? -outward : -transform.forward;
+        float castRadius = grabPointSearchRadius * 0.35f;
+        float castDistance = grabPointSearchRadius * 1.6f;
+
+        if (Physics.SphereCast(origin - castDir * castRadius, castRadius, castDir, out RaycastHit hit, castDistance, climbableMask, QueryTriggerInteraction.Ignore))
+        {
+            GrabPointWorld = hit.point;
+            LockedNormal = hit.normal;
+            HasGrabPoint = true;
+            return;
+        }
+
+        // 2) Fallback: buscamos colliders cercanos en climbable y usamos ClosestPoint
         Collider[] cols = Physics.OverlapSphere(origin, grabPointSearchRadius, climbableMask, QueryTriggerInteraction.Ignore);
 
         if (cols.Length == 0)

@@ -21,6 +21,11 @@ public class ClimbManager : MonoBehaviour
     public float handDeadzone = 0.006f;   // 3–8 mm
     public float handFilter = 22f;        // 15–35 (más alto = más estable)
 
+    [Header("Corners / Ledges")]
+    public float normalLerp = 16f;        // suaviza cambios bruscos de normal
+    public float normalCompliance = 0.25f;// deja algo de componente normal al coronar
+    public float minSlideSpeed = 0.02f;   // si tras proyectar queda casi 0, desliza en tangente
+
     [Header("Smoothing (used for non-climb moves)")]
     public float moveSmoothing = 20f;
 
@@ -49,6 +54,7 @@ public class ClimbManager : MonoBehaviour
 
     private Vector3 lastHandPos;
     private Vector3 smoothedApplied;
+    private Vector3 smoothedNormal = Vector3.zero;
 
     // filtro de jitter
     private Vector3 filteredHandDelta = Vector3.zero;
@@ -100,8 +106,9 @@ public class ClimbManager : MonoBehaviour
                     if (b) b.enabled = false;
         }
 
-        lastHandPos = hand.HandWorldPosForClimb;
+        lastHandPos = hand.transform.position;
         smoothedApplied = Vector3.zero;
+        smoothedNormal = hand.LockedNormal;
 
         // reset filtro (importantísimo para que no “salte”)
         filteredHandDelta = Vector3.zero;
@@ -118,8 +125,9 @@ public class ClimbManager : MonoBehaviour
         if (fb != null)
         {
             activeHand = fb;
-            lastHandPos = fb.HandWorldPosForClimb;
+            lastHandPos = fb.transform.position;
             smoothedApplied = Vector3.zero;
+            smoothedNormal = fb.LockedNormal;
 
             // reset filtro al cambiar de mano
             filteredHandDelta = Vector3.zero;
@@ -136,6 +144,7 @@ public class ClimbManager : MonoBehaviour
 
         // reset filtro al soltar
         filteredHandDelta = Vector3.zero;
+        smoothedNormal = Vector3.zero;
 
         if (isMantling) return;
 
@@ -171,7 +180,7 @@ public class ClimbManager : MonoBehaviour
         if (!isClimbing || activeHand == null || !ovrCharacterController || !playerRoot)
             return;
 
-        Vector3 current = activeHand.HandWorldPosForClimb;
+        Vector3 current = activeHand.transform.position;
 
         // --- jitter filter (deadzone + low-pass) ---
         Vector3 rawDelta = current - lastHandPos;
@@ -187,11 +196,42 @@ public class ClimbManager : MonoBehaviour
 
         Vector3 move = -filteredHandDelta * climbStrength;
 
-        // ✅ CLAVE: NO dejar componente normal (ni hacia dentro ni hacia fuera)
+        // Manejo de esquinas: suaviza la normal y evita quedarse "clavado" al cambiar de cara
         Vector3 n = activeHand.LockedNormal;
         if (n != Vector3.zero)
         {
-            move = Vector3.ProjectOnPlane(move, n);
+            float lerp = 1f - Mathf.Exp(-normalLerp * Time.deltaTime);
+            smoothedNormal = (smoothedNormal == Vector3.zero) ? n : Vector3.Slerp(smoothedNormal, n, lerp);
+
+            Vector3 rawMove = move;
+
+            // Proyección principal (tangente a la superficie)
+            move = Vector3.ProjectOnPlane(rawMove, smoothedNormal);
+
+            // Permite un poco de componente normal cuando la superficie es casi horizontal (coronar cantos)
+            float upDot = Mathf.Clamp01(Vector3.Dot(smoothedNormal, Vector3.up));
+            float compliance = normalCompliance * upDot;
+            if (compliance > 0f)
+            {
+                float alongNormal = Vector3.Dot(rawMove, smoothedNormal);
+                move += smoothedNormal * alongNormal * compliance;
+            }
+
+            // Si tras proyectar queda casi 0 (típico en vértices), desliza en una tangente estable
+            if (move.magnitude < minSlideSpeed)
+            {
+                Vector3 tangent = Vector3.Cross(smoothedNormal, Vector3.up);
+                if (tangent.sqrMagnitude < 0.0001f)
+                    tangent = Vector3.Cross(smoothedNormal, Vector3.right);
+
+                tangent.Normalize();
+                float alongTangent = Vector3.Dot(rawMove, tangent);
+                move += tangent * alongTangent;
+            }
+        }
+        else
+        {
+            smoothedNormal = Vector3.zero;
         }
 
         float maxStep = maxClimbSpeed * Time.deltaTime;
