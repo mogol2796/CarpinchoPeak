@@ -119,20 +119,6 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!114 &11540520
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fc1515ab76e54f068e2f2207940fab32, type: 3}
-  m_Name: PlayerMovement/InventoryB
-  m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.InputActionReference
-  m_Asset: {fileID: -944628639613478452, guid: 3bf9dbfaf30505b439b3630037404f8b, type: 3}
-  m_ActionId: d78e35c5-66be-4874-ae67-c4069759635c
 --- !u!1 &14003839
 GameObject:
   m_ObjectHideFlags: 0
@@ -855,7 +841,6 @@ GameObject:
   - component: {fileID: 46212094}
   - component: {fileID: 46212095}
   - component: {fileID: 46212096}
-  - component: {fileID: 46212097}
   m_Layer: 0
   m_Name: ClimbHandCollider
   m_TagString: Untagged
@@ -1034,14 +1019,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HandRayPickup
   inventory: {fileID: 102686763}
   rayOrigin: {fileID: 2111842560}
-  rayDistance: 20
+  rayDistance: 2
   pickupMask:
     serializedVersion: 2
     m_Bits: 128
-  showDebugRay: 0
-  showRayInGame: 1
-  rayColor: {r: 0, g: 1, b: 1, a: 1}
-  rayWidth: 0.01
+  showDebugRay: 1
   triggerAction:
     m_UseReference: 1
     m_Action:
@@ -1055,116 +1037,6 @@ MonoBehaviour:
       m_Flags: 0
     m_Reference: {fileID: 1128013997}
   fullInventoryMsgSeconds: 0.8
---- !u!120 &46212097
-LineRenderer:
-  serializedVersion: 3
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 46212088}
-  m_Enabled: 1
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 0
-  m_LightProbeUsage: 0
-  m_ReflectionProbeUsage: 0
-  m_RayTracingMode: 0
-  m_RayTraceProcedural: 0
-  m_RayTracingAccelStructBuildFlagsOverride: 0
-  m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 0}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 3
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_MaskInteraction: 0
-  m_Positions:
-  - {x: 0, y: 0, z: 0}
-  - {x: 0, y: 0, z: 1}
-  m_Parameters:
-    serializedVersion: 3
-    widthMultiplier: 1
-    widthCurve:
-      serializedVersion: 2
-      m_Curve:
-      - serializedVersion: 3
-        time: 0
-        value: 1
-        inSlope: 0
-        outSlope: 0
-        tangentMode: 0
-        weightedMode: 0
-        inWeight: 0.33333334
-        outWeight: 0.33333334
-      m_PreInfinity: 2
-      m_PostInfinity: 2
-      m_RotationOrder: 4
-    colorGradient:
-      serializedVersion: 2
-      key0: {r: 1, g: 1, b: 1, a: 1}
-      key1: {r: 1, g: 1, b: 1, a: 1}
-      key2: {r: 0, g: 0, b: 0, a: 0}
-      key3: {r: 0, g: 0, b: 0, a: 0}
-      key4: {r: 0, g: 0, b: 0, a: 0}
-      key5: {r: 0, g: 0, b: 0, a: 0}
-      key6: {r: 0, g: 0, b: 0, a: 0}
-      key7: {r: 0, g: 0, b: 0, a: 0}
-      ctime0: 0
-      ctime1: 65535
-      ctime2: 0
-      ctime3: 0
-      ctime4: 0
-      ctime5: 0
-      ctime6: 0
-      ctime7: 0
-      atime0: 0
-      atime1: 65535
-      atime2: 0
-      atime3: 0
-      atime4: 0
-      atime5: 0
-      atime6: 0
-      atime7: 0
-      m_Mode: 0
-      m_ColorSpace: -1
-      m_NumColorKeys: 2
-      m_NumAlphaKeys: 2
-    numCornerVertices: 0
-    numCapVertices: 0
-    alignment: 0
-    textureMode: 0
-    textureScale: {x: 1, y: 1}
-    shadowBias: 0.5
-    generateLightingData: 0
-  m_UseWorldSpace: 1
-  m_Loop: 0
-  m_ApplyActiveColorSpace: 1
 --- !u!1 &50424200
 GameObject:
   m_ObjectHideFlags: 0
@@ -1480,7 +1352,7 @@ MonoBehaviour:
       m_Interactions: 
       m_SingletonActionBindings: []
       m_Flags: 0
-    m_Reference: {fileID: 1120497128}
+    m_Reference: {fileID: 0}
   useSlot2:
     m_UseReference: 1
     m_Action:
@@ -1492,7 +1364,7 @@ MonoBehaviour:
       m_Interactions: 
       m_SingletonActionBindings: []
       m_Flags: 0
-    m_Reference: {fileID: 11540520}
+    m_Reference: {fileID: 0}
   useSlot3:
     m_UseReference: 1
     m_Action:
@@ -1504,7 +1376,7 @@ MonoBehaviour:
       m_Interactions: 
       m_SingletonActionBindings: []
       m_Flags: 0
-    m_Reference: {fileID: 990623893}
+    m_Reference: {fileID: 0}
 --- !u!114 &102686763
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8090,20 +7962,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1760829484}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &990623893
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fc1515ab76e54f068e2f2207940fab32, type: 3}
-  m_Name: PlayerMovement/InventoryA
-  m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.InputActionReference
-  m_Asset: {fileID: -944628639613478452, guid: 3bf9dbfaf30505b439b3630037404f8b, type: 3}
-  m_ActionId: 50c28206-a123-4a06-8bc4-b3f45d85a0e7
 --- !u!1 &991409638
 GameObject:
   m_ObjectHideFlags: 0
@@ -9838,20 +9696,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1662762495}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1120497128
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fc1515ab76e54f068e2f2207940fab32, type: 3}
-  m_Name: PlayerMovement/InventoryX
-  m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.InputActionReference
-  m_Asset: {fileID: -944628639613478452, guid: 3bf9dbfaf30505b439b3630037404f8b, type: 3}
-  m_ActionId: 9841d00f-eef9-4ba9-aeb9-b1f4433ffe53
 --- !u!1 &1126448402
 GameObject:
   m_ObjectHideFlags: 0
@@ -10300,7 +10144,7 @@ RectTransform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1168203099}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: -2000}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -11355,7 +11199,6 @@ GameObject:
   - component: {fileID: 1343977888}
   - component: {fileID: 1343977889}
   - component: {fileID: 1343977890}
-  - component: {fileID: 1343977891}
   m_Layer: 0
   m_Name: ClimbHandCollider
   m_TagString: Untagged
@@ -11534,14 +11377,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HandRayPickup
   inventory: {fileID: 102686763}
   rayOrigin: {fileID: 923001908}
-  rayDistance: 20
+  rayDistance: 2
   pickupMask:
     serializedVersion: 2
     m_Bits: 128
-  showDebugRay: 0
-  showRayInGame: 1
-  rayColor: {r: 0, g: 1, b: 1, a: 1}
-  rayWidth: 0.01
+  showDebugRay: 1
   triggerAction:
     m_UseReference: 1
     m_Action:
@@ -11555,116 +11395,6 @@ MonoBehaviour:
       m_Flags: 0
     m_Reference: {fileID: 398744788}
   fullInventoryMsgSeconds: 0.8
---- !u!120 &1343977891
-LineRenderer:
-  serializedVersion: 3
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1343977882}
-  m_Enabled: 1
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 0
-  m_LightProbeUsage: 0
-  m_ReflectionProbeUsage: 0
-  m_RayTracingMode: 0
-  m_RayTraceProcedural: 0
-  m_RayTracingAccelStructBuildFlagsOverride: 0
-  m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 0}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 3
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_MaskInteraction: 0
-  m_Positions:
-  - {x: 0, y: 0, z: 0}
-  - {x: 0, y: 0, z: 1}
-  m_Parameters:
-    serializedVersion: 3
-    widthMultiplier: 1
-    widthCurve:
-      serializedVersion: 2
-      m_Curve:
-      - serializedVersion: 3
-        time: 0
-        value: 1
-        inSlope: 0
-        outSlope: 0
-        tangentMode: 0
-        weightedMode: 0
-        inWeight: 0.33333334
-        outWeight: 0.33333334
-      m_PreInfinity: 2
-      m_PostInfinity: 2
-      m_RotationOrder: 4
-    colorGradient:
-      serializedVersion: 2
-      key0: {r: 1, g: 1, b: 1, a: 1}
-      key1: {r: 1, g: 1, b: 1, a: 1}
-      key2: {r: 0, g: 0, b: 0, a: 0}
-      key3: {r: 0, g: 0, b: 0, a: 0}
-      key4: {r: 0, g: 0, b: 0, a: 0}
-      key5: {r: 0, g: 0, b: 0, a: 0}
-      key6: {r: 0, g: 0, b: 0, a: 0}
-      key7: {r: 0, g: 0, b: 0, a: 0}
-      ctime0: 0
-      ctime1: 65535
-      ctime2: 0
-      ctime3: 0
-      ctime4: 0
-      ctime5: 0
-      ctime6: 0
-      ctime7: 0
-      atime0: 0
-      atime1: 65535
-      atime2: 0
-      atime3: 0
-      atime4: 0
-      atime5: 0
-      atime6: 0
-      atime7: 0
-      m_Mode: 0
-      m_ColorSpace: -1
-      m_NumColorKeys: 2
-      m_NumAlphaKeys: 2
-    numCornerVertices: 0
-    numCapVertices: 0
-    alignment: 0
-    textureMode: 0
-    textureScale: {x: 1, y: 1}
-    shadowBias: 0.5
-    generateLightingData: 0
-  m_UseWorldSpace: 1
-  m_Loop: 0
-  m_ApplyActiveColorSpace: 1
 --- !u!1 &1356117070
 GameObject:
   m_ObjectHideFlags: 0
@@ -11891,6 +11621,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f12202adb6e7d434f87c7b70be6156e2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MantleZone
+  standPoint: {fileID: 1983115717}
 --- !u!65 &1381347563
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -12151,6 +11882,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f12202adb6e7d434f87c7b70be6156e2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MantleZone
+  standPoint: {fileID: 399845610}
 --- !u!65 &1425834214
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -15851,12 +15583,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PickupItem
   itemName: Apple
-  icon: {fileID: 21300000, guid: a7dd774fbdca87d48a37218778589c48, type: 3}
+  icon: {fileID: 0}
   effectType: 1
   amount: 25
   consumeOnUse: 1
   displayName: Apple
-  promptGO: {fileID: 314266013}
+  promptGO: {fileID: 0}
 --- !u!135 &1908531350
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -16627,6 +16359,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 91e652c5ed3d5d744bcd3a473dc6d3d3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MantleProbe
+  manager: {fileID: 1292911989}
+  r: {fileID: 0}
+  inZone:
+    r: 0
+    g: 1
+    b: 1
+    a: 1
+  outZone:
+    r: 1
+    g: 1
+    b: 1
+    a: 1
 --- !u!54 &2036977185
 Rigidbody:
   m_ObjectHideFlags: 0
