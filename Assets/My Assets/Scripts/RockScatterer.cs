@@ -148,11 +148,44 @@ public class RockScatterer : MonoBehaviour
 
     void OnDrawGizmosSelected()
     {
+        // 1. Draw the Scan Area (The "Ring")
+        Gizmos.color = Color.yellow;
+        Vector3 center = transform.position;
+
+        // Draw the min/max height lines
+        Gizmos.DrawLine(center + Vector3.up * minHeight, center + Vector3.up * maxHeight);
+
+        // 2. Draw the FOV Arc using UnityEditor Handles (Visualizes the cone)
+#if UNITY_EDITOR
+        UnityEditor.Handles.color = new Color(1, 1, 0, 0.1f); // Transparent yellow
+        Vector3 forward = Quaternion.Euler(0, centerAngle, 0) * Vector3.forward;
+
+        // Draw the solid arc
+        UnityEditor.Handles.DrawSolidArc(
+            center + Vector3.up * ((minHeight + maxHeight) / 2),
+            Vector3.up,
+            Quaternion.Euler(0, -fieldOfView / 2, 0) * forward,
+            fieldOfView,
+            scanRadius
+        );
+
+        // Draw the wire outline
+        UnityEditor.Handles.color = Color.yellow;
+        UnityEditor.Handles.DrawWireArc(
+            center + Vector3.up * ((minHeight + maxHeight) / 2),
+            Vector3.up,
+            Quaternion.Euler(0, -fieldOfView / 2, 0) * forward,
+            fieldOfView,
+            scanRadius
+        );
+#endif
+
+        // 3. Draw the Raycast history
         foreach (var ray in lastSpawnRays)
         {
             Gizmos.color = ray.hit ? Color.green : Color.red;
             Gizmos.DrawLine(ray.start, ray.end);
-            if (ray.hit) Gizmos.DrawSphere(ray.end, 0.2f);
+            if (ray.hit) Gizmos.DrawSphere(ray.end, 0.1f);
         }
     }
 }
