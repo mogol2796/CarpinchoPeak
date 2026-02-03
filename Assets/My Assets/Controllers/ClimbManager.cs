@@ -154,11 +154,11 @@ public class ClimbManager : MonoBehaviour
         //     return;
         // }
 
-        if (isMantling)
-        {
-            UpdateMantle();
-            return;
-        }
+        // if (isMantling)
+        // {
+        //     UpdateMantle();
+        //     return;
+        // }
 
         UpdateStamina();
 
