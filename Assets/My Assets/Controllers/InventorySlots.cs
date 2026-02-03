@@ -2,12 +2,34 @@ using UnityEngine;
 
 public class InventorySlots : MonoBehaviour
 {
-    public ItemData[] slots = new ItemData[3];
+    public PickupItem[] slots = new PickupItem[3];
+
+    // 🔔 UI opcional (si existe, se refresca sola)
+    public InventorySlotsUI slotsUI;
+
+    public bool TryAdd(PickupItem item)
+    {
+        if (!item) return false;
+
+        for (int i = 0; i < slots.Length; i++)
+        {
+            if (slots[i] == null)
+            {
+                slots[i] = item;
+                slotsUI?.Refresh();
+                return true;
+            }
+        }
+
+        // inventario lleno
+        return false;
+    }
 
     public bool TryUseSlot(int index, PlayerManager player)
     {
         if (index < 0 || index >= slots.Length) return false;
-        ItemData item = slots[index];
+
+        PickupItem item = slots[index];
         if (!item || !player) return false;
 
         switch (item.effectType)
@@ -24,6 +46,7 @@ public class InventorySlots : MonoBehaviour
         if (item.consumeOnUse)
             slots[index] = null;
 
+        slotsUI?.Refresh();
         return true;
     }
 }

@@ -1,15 +1,15 @@
-using UnityEngine;
+// using UnityEngine;
 
-public enum ItemEffectType { HealHealth, RestoreHunger }
+// public enum ItemEffectType { HealHealth, RestoreHunger }
 
-[CreateAssetMenu(menuName = "Game/Item")]
-public class ItemData : ScriptableObject
-{
-    public string itemName;
-    public Sprite icon;
+// [CreateAssetMenu(menuName = "Game/Item")]
+// public class ItemData : MonoBehaviour
+// {
+//     public string itemName;
+//     public Sprite icon;
 
-    public ItemEffectType effectType;
-    public float amount = 25f;
+//     public ItemEffectType effectType;
+//     public float amount = 25f;
 
-    public bool consumeOnUse = true;
-}
+//     public bool consumeOnUse = true;
+// }
