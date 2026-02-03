@@ -61,7 +61,7 @@ public class ClimbManager : MonoBehaviour
     private Vector3 mantleStart;
     private Vector3 mantleTarget;
 
-    private MantleZone currentZone;
+    // private MantleZone currentZone;
 
     public bool IsClimbing => isClimbing;
     public bool IsMantling => isMantling;
@@ -69,7 +69,7 @@ public class ClimbManager : MonoBehaviour
     private void OnEnable() => mantleAction.action?.Enable();
     private void OnDisable() => mantleAction.action?.Disable();
 
-    public void SetMantleZone(MantleZone z) => currentZone = z;
+    // public void SetMantleZone(MantleZone z) => currentZone = z;
 
     public void RegisterHand(ClimbHand hand)
     {
@@ -148,11 +148,11 @@ public class ClimbManager : MonoBehaviour
     private void Update()
     {
         // Mantle por zona
-        if (!isMantling && currentZone && mantleAction.action != null && mantleAction.action.WasPressedThisFrame())
-        {
-            StartMantle(currentZone);
-            return;
-        }
+        // if (!isMantling && currentZone && mantleAction.action != null && mantleAction.action.WasPressedThisFrame())
+        // {
+        //     StartMantle(currentZone);
+        //     return;
+        // }
 
         if (isMantling)
         {
@@ -306,33 +306,33 @@ public class ClimbManager : MonoBehaviour
         StopClimb();
     }
 
-    private void StartMantle(MantleZone zone)
-    {
-        if (zone == null || !playerRoot || !ovrCharacterController) return;
+    // private void StartMantle(MantleZone zone)
+    // {
+    //     if (zone == null || !playerRoot || !ovrCharacterController) return;
 
-        isMantling = true;
-        mantleT = 0f;
+    //     isMantling = true;
+    //     mantleT = 0f;
 
-        isClimbing = false;
-        activeHand = null;
-        releaseTimer = 0f;
-        fallVelocity = 0f;
-        smoothedApplied = Vector3.zero;
+    //     isClimbing = false;
+    //     activeHand = null;
+    //     releaseTimer = 0f;
+    //     fallVelocity = 0f;
+    //     smoothedApplied = Vector3.zero;
 
-        // reset filtro al empezar mantle
-        filteredHandDelta = Vector3.zero;
+    //     // reset filtro al empezar mantle
+    //     filteredHandDelta = Vector3.zero;
 
-        mantleStart = playerRoot.position;
+    //     mantleStart = playerRoot.position;
 
-        if (zone.standPoint != null)
-            mantleTarget = zone.standPoint.position;
-        else
-            mantleTarget = mantleStart + Vector3.up * mantleFallbackUp + playerRoot.forward * mantleFallbackForward;
+    //     if (zone.standPoint != null)
+    //         mantleTarget = zone.standPoint.position;
+    //     else
+    //         mantleTarget = mantleStart + Vector3.up * mantleFallbackUp + playerRoot.forward * mantleFallbackForward;
 
-        if (disableWhileClimbing != null)
-            foreach (var b in disableWhileClimbing)
-                if (b) b.enabled = false;
-    }
+    //     if (disableWhileClimbing != null)
+    //         foreach (var b in disableWhileClimbing)
+    //             if (b) b.enabled = false;
+    // }
 
     private void UpdateMantle()
     {

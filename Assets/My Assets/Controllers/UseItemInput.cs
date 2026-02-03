@@ -3,8 +3,10 @@ using UnityEngine.InputSystem;
 
 public class UseItemInput : MonoBehaviour
 {
+    [Header("Refs")]
     public PlayerManager player;
     public InventorySlots inventory;
+    public HUDMenuToggle hudMenu;
 
     public InputActionProperty useSlot1; // slot 0
     public InputActionProperty useSlot2; // slot 1
@@ -27,6 +29,7 @@ public class UseItemInput : MonoBehaviour
     void Update()
     {
         if (!player || !inventory) return;
+        if (hudMenu != null && !hudMenu.IsOpen()) return;
 
         if (useSlot1.action != null && useSlot1.action.WasPressedThisFrame())
             inventory.TryUseSlot(0, player);
