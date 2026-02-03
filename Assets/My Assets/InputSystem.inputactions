@@ -68,6 +68,33 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "InventoryX",
+                    "type": "Button",
+                    "id": "9841d00f-eef9-4ba9-aeb9-b1f4433ffe53",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "InventoryB",
+                    "type": "Button",
+                    "id": "d78e35c5-66be-4874-ae67-c4069759635c",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "InventoryA",
+                    "type": "Button",
+                    "id": "50c28206-a123-4a06-8bc4-b3f45d85a0e7",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -129,7 +156,7 @@
                 {
                     "name": "",
                     "id": "b1d50b3d-b9cb-4449-a0f0-e06bb14c0f81",
-                    "path": "<XRController>{LeftHand}/{PrimaryTrigger}",
+                    "path": "<XRController>{LeftHand}/{TriggerButton}",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -140,11 +167,44 @@
                 {
                     "name": "",
                     "id": "ffb142a0-8a6b-42eb-8895-31441971534f",
-                    "path": "<XRController>{RightHand}/{PrimaryTrigger}",
+                    "path": "<XRController>{RightHand}/{TriggerButton}",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
                     "action": "PickupRight",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "379ced49-e411-4576-9965-b7759c9b7034",
+                    "path": "<XRController>{LeftHand}/{PrimaryButton}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "InventoryX",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "b5be80b8-3251-428b-8c37-8ca217adb123",
+                    "path": "<XRController>{RightHand}/{SecondaryButton}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "InventoryB",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "f8120484-7b35-4db4-a201-898279aa97b3",
+                    "path": "<XRController>{RightHand}/{PrimaryButton}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "InventoryA",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

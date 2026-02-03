@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+[RequireComponent(typeof(LineRenderer))]
 public class HandRayPickup : MonoBehaviour
 {
     [Header("Refs")]
@@ -12,6 +13,11 @@ public class HandRayPickup : MonoBehaviour
     public LayerMask pickupMask;
     public bool showDebugRay = true;
 
+    [Header("Ray Visual")]
+    public bool showRayInGame = true;
+    public Color rayColor = Color.cyan;
+    public float rayWidth = 0.01f;
+
     [Header("Input")]
     public InputActionProperty triggerAction;
 
@@ -20,12 +26,25 @@ public class HandRayPickup : MonoBehaviour
 
     private PickupItem _currentTarget;
     private float _fullMsgTimer;
+    private LineRenderer _line;
+
+    void Awake()
+    {
+        _line = GetComponent<LineRenderer>();
+        if (_line == null) _line = gameObject.AddComponent<LineRenderer>();
+
+        _line.useWorldSpace = true;
+        _line.positionCount = 2;
+        _line.material = new Material(Shader.Find("Sprites/Default"));
+    }
 
     void OnEnable() => triggerAction.action?.Enable();
     void OnDisable() => triggerAction.action?.Disable();
 
     void Update()
     {
+        UpdateRayVisual();
+
         if (!inventory) return;
 
         UpdateRayTarget();
@@ -56,7 +75,7 @@ public class HandRayPickup : MonoBehaviour
 
         if (Physics.Raycast(ray, out RaycastHit hit, rayDistance, pickupMask, QueryTriggerInteraction.Ignore))
             hitPickup = hit.collider.GetComponentInParent<PickupItem>();
-        
+
         if (hitPickup == _currentTarget) return;
 
         // ✅ apaga prompt del target anterior
@@ -65,12 +84,37 @@ public class HandRayPickup : MonoBehaviour
 
         _currentTarget = hitPickup;
 
+        // if (_currentTarget != null)
+        //     Debug.Log($"[HandRayPickup] Ray tocó pickup '{_currentTarget.displayName}' ({_currentTarget.gameObject.name})", _currentTarget);
+
         // si veníamos de "inventario lleno", no muestres prompt hasta que acabe el timer
         if (_fullMsgTimer > 0f) return;
 
         // ✅ enciende prompt del nuevo target
         if (_currentTarget != null)
             _currentTarget.ShowPrompt(true);
+    }
+
+    private void UpdateRayVisual()
+    {
+        if (_line == null) return;
+
+        if (!showRayInGame)
+        {
+            if (_line.enabled) _line.enabled = false;
+            return;
+        }
+
+        Transform o = rayOrigin ? rayOrigin : transform;
+
+        _line.enabled = true;
+        _line.startColor = rayColor;
+        _line.endColor = rayColor;
+        _line.startWidth = rayWidth;
+        _line.endWidth = rayWidth;
+
+        _line.SetPosition(0, o.position);
+        _line.SetPosition(1, o.position + o.forward * rayDistance);
     }
 
     private void TryPickup()
