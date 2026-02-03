@@ -10,6 +10,9 @@ public class HUDMenuToggle : MonoBehaviour
     public Transform centerEye;
     public GameObject panelRoot;
 
+    [Header("Lock While Open")]
+    public MonoBehaviour[] disableWhileOpen;
+
     [Header("Placement (relative to the view)")]
     public Vector3 localOffset = new Vector3(0f, -0.05f, 0.5f);
     public bool faceCamera = true;
@@ -44,6 +47,7 @@ public class HUDMenuToggle : MonoBehaviour
         {
             _visible = !_visible;
             if (panelRoot) panelRoot.SetActive(_visible);
+            SetLockedComponents(_visible);
         }
     }
 
@@ -61,6 +65,17 @@ public class HUDMenuToggle : MonoBehaviour
             targetRot = Quaternion.LookRotation(centerEye.position - transform.position, Vector3.up);
 
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, 1f - Mathf.Exp(-rotLerp * Time.deltaTime));
+        }
+    }
+
+    private void SetLockedComponents(bool lockState)
+    {
+        if (disableWhileOpen == null) return;
+
+        for (int i = 0; i < disableWhileOpen.Length; i++)
+        {
+            if (disableWhileOpen[i] != null)
+                disableWhileOpen[i].enabled = !lockState;
         }
     }
 }

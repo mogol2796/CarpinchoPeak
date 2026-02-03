@@ -29,7 +29,9 @@ public class UseItemInput : MonoBehaviour
     void Update()
     {
         if (!player || !inventory) return;
-        if (hudMenu != null && !hudMenu.IsOpen()) return;
+
+        // Sólo consumir si el inventario está abierto
+        if (hudMenu == null || !hudMenu.IsOpen()) return;
 
         if (useSlot1.action != null && useSlot1.action.WasPressedThisFrame())
             inventory.TryUseSlot(0, player);
