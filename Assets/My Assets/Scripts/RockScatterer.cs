@@ -57,6 +57,7 @@ public class RockScatterer : MonoBehaviour
         Random.InitState(scatterSeed);
         lastSpawnRays.Clear();
 
+        // Cleanup existing rocks
         for (int i = transform.childCount - 1; i >= 0; i--)
         {
             if (Application.isPlaying) Destroy(transform.GetChild(i).gameObject);
@@ -65,15 +66,29 @@ public class RockScatterer : MonoBehaviour
 
         int successCount = 0;
         int attempts = 0;
+
+        // We want to shoot FROM the scanRadius back TOWARD the center
         while (successCount < rockCount && attempts < rockCount * 15)
         {
             attempts++;
+
+            // 1. Calculate the angle based on your FOV settings
             float halfFOV = fieldOfView / 2f;
             float randomAngle = (centerAngle + Random.Range(-halfFOV, halfFOV)) * Mathf.Deg2Rad;
-            Vector3 direction = new Vector3(Mathf.Sin(randomAngle), 0, Mathf.Cos(randomAngle));
-            Vector3 origin = transform.position + new Vector3(0, Random.Range(minHeight, maxHeight), 0);
 
-            if (Physics.Raycast(origin, direction, out RaycastHit hit, scanRadius, targetLayer))
+            // 2. Determine the starting point (The Outside Edge of the Cylinder)
+            // We multiply by scanRadius to start far away from the center
+            Vector3 edgePosition = new Vector3(Mathf.Sin(randomAngle), 0, Mathf.Cos(randomAngle)) * scanRadius;
+            Vector3 origin = transform.position + edgePosition + new Vector3(0, Random.Range(minHeight, maxHeight), 0);
+
+            // 3. The Direction is now INWARD (Point back at the center of this object)
+            // We ignore the Y difference to keep the ray horizontal
+            Vector3 centerAtRayHeight = new Vector3(transform.position.x, origin.y, transform.position.z);
+            Vector3 directionInward = (centerAtRayHeight - origin).normalized;
+
+            // 4. Raycast INWARD
+            // We use scanRadius + a little extra padding for the distance
+            if (Physics.Raycast(origin, directionInward, out RaycastHit hit, scanRadius + 5f, targetLayer))
             {
                 CreateRockOnWall(hit.point, hit.normal, hit.collider.gameObject);
                 lastSpawnRays.Add(new RayData { start = origin, end = hit.point, normal = hit.normal, hit = true });
@@ -81,7 +96,7 @@ public class RockScatterer : MonoBehaviour
             }
             else
             {
-                lastSpawnRays.Add(new RayData { start = origin, end = origin + direction * scanRadius, hit = false });
+                lastSpawnRays.Add(new RayData { start = origin, end = origin + directionInward * scanRadius, hit = false });
             }
         }
     }
