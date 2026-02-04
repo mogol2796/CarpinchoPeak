@@ -73,7 +73,11 @@ public class ProceduralRock : MonoBehaviour
         mesh.triangles = triangles.ToArray();
         mesh.RecalculateNormals();
 
-        if (TryGetComponent<MeshCollider>(out var col)) col.sharedMesh = mesh;
+        if (TryGetComponent<MeshCollider>(out var col))
+        {
+            col.sharedMesh = mesh;
+            col.convex = true;
+        }
     }
 
     void CreateStretchedSphere()
