@@ -15,6 +15,9 @@ EditorBuildSettings:
     path: Assets/Scenes/Prueba 1.unity
     guid: 4a79edf7271d0964c9a323f80d608669
   - enabled: 1
+    path: Assets/My Assets/Scenes/MainMenu.unity
+    guid: 0a277cc7aa2566c48b31353e42d48ae9
+  - enabled: 1
     path: Assets/My Assets/Scenes/TerrainGenerationSceneSMALL.unity
     guid: 0cd9d5bce2815a846b671cb4c53adf9f
   m_configObjects:
