@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections; // Required for Coroutines
 
 public class MountainGenerator : MonoBehaviour
 {
@@ -8,8 +9,6 @@ public class MountainGenerator : MonoBehaviour
 
     [Header("Seed Management")]
     public bool randomizeOnGenerate = true;
-
-    [Tooltip("Record these if you find a layout you like!")]
     public int lastBigSeed;
     public int lastMidSeed;
     public int lastSmallSeed;
@@ -21,6 +20,10 @@ public class MountainGenerator : MonoBehaviour
     public GameObject winZonePrefab;
     public float winZoneOffset = 5f;
 
+    [Header("Global Prefabs")]
+    public GameObject[] globalPlantPrefabs;
+    public GameObject[] globalItemPrefabs;
+
     void Start()
     {
         if (generateOnStart) Generate();
@@ -28,6 +31,11 @@ public class MountainGenerator : MonoBehaviour
 
     [ContextMenu("Generate Full Mountain")]
     public void Generate()
+    {
+        StartCoroutine(GenerationRoutine());
+    }
+
+    IEnumerator GenerationRoutine()
     {
         if (randomizeOnGenerate)
         {
@@ -63,24 +71,35 @@ public class MountainGenerator : MonoBehaviour
             smallScatterer.SpawnRocks();
         }
 
-        Debug.Log("Mountain Generation Complete!");
+        yield return new WaitForFixedUpdate();
+
+        ProceduralRock[] allRocks = FindObjectsByType<ProceduralRock>(FindObjectsSortMode.None);
+        foreach (ProceduralRock rock in allRocks)
+        {
+            if (rock.TryGetComponent<PlantSpawner>(out var spawner))
+            {
+                spawner.plantPrefabs = globalPlantPrefabs;
+                spawner.SpawnPlants();
+            }
+
+            // Then spawn items
+            if (rock.TryGetComponent<ItemSpawner>(out var iSpawner))
+                iSpawner.itemPrefabs = globalItemPrefabs;
+                iSpawner.SpawnItems();
+        }
 
         float truePeakY = 0;
-
-        // We check the Big Scatterer since it's the "foundation"
         foreach (Transform rock in bigScatterer.transform)
         {
             if (rock.TryGetComponent<Collider>(out var col))
             {
                 float rockTop = col.bounds.max.y;
-                if (rockTop > truePeakY)
-                {
-                    truePeakY = rockTop;
-                }
+                if (rockTop > truePeakY) truePeakY = rockTop;
             }
         }
 
         PlaceWinZone(truePeakY);
+        Debug.Log("Mountain Generation and Decoration Complete!");
     }
 
     void SetLayerRecursive(Transform parent, int newLayer)
@@ -98,13 +117,7 @@ public class MountainGenerator : MonoBehaviour
         WinZone existingZone = FindFirstObjectByType<WinZone>();
         Vector3 spawnPos = new Vector3(0, highestY + winZoneOffset, 0);
 
-        if (existingZone == null)
-        {
-            Instantiate(winZonePrefab, spawnPos, Quaternion.identity);
-        }
-        else
-        {
-            existingZone.transform.position = spawnPos;
-        }
+        if (existingZone == null) Instantiate(winZonePrefab, spawnPos, Quaternion.identity);
+        else existingZone.transform.position = spawnPos;
     }
 }

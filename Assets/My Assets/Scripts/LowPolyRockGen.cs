@@ -61,7 +61,6 @@ public class ProceduralRock : MonoBehaviour
         if (useFlatTop)
         {
             ApplyFlatTop();
-            CalculateSpawnZone();
         }
 
         if (useFlatShading)
@@ -75,11 +74,6 @@ public class ProceduralRock : MonoBehaviour
         mesh.RecalculateNormals();
 
         if (TryGetComponent<MeshCollider>(out var col)) col.sharedMesh = mesh;
-
-        if (TryGetComponent<PlantSpawner>(out var spawner))
-        {
-            spawner.SpawnPlants();
-        }
     }
 
     void CreateStretchedSphere()
@@ -168,34 +162,34 @@ public class ProceduralRock : MonoBehaviour
         }
     }
 
-    void CalculateSpawnZone()
-    {
-        Vector3 sum = Vector3.zero;
-        int count = 0;
-        List<Vector3> topPoints = new List<Vector3>();
+    //void CalculateSpawnZone()
+    //{
+    //    Vector3 sum = Vector3.zero;
+    //    int count = 0;
+    //    List<Vector3> topPoints = new List<Vector3>();
 
-        foreach (Vector3 v in vertices)
-        {
-            if (v.y >= flatTopHeight - 0.05f)
-            {
-                sum += v;
-                topPoints.Add(v);
-                count++;
-            }
-        }
+    //    foreach (Vector3 v in vertices)
+    //    {
+    //        if (v.y >= flatTopHeight - 0.05f)
+    //        {
+    //            sum += v;
+    //            topPoints.Add(v);
+    //            count++;
+    //        }
+    //    }
 
-        if (count > 0)
-        {
-            topCenterLocal = sum / count;
-            float maxDistSq = 0;
-            foreach (Vector3 p in topPoints)
-            {
-                float distSq = (new Vector3(p.x, 0, p.z) - new Vector3(topCenterLocal.x, 0, topCenterLocal.z)).sqrMagnitude;
-                if (distSq > maxDistSq) maxDistSq = distSq;
-            }
-            topRadius = Mathf.Sqrt(maxDistSq) * 0.85f;
-        }
-    }
+    //    if (count > 0)
+    //    {
+    //        topCenterLocal = sum / count;
+    //        float maxDistSq = 0;
+    //        foreach (Vector3 p in topPoints)
+    //        {
+    //            float distSq = (new Vector3(p.x, 0, p.z) - new Vector3(topCenterLocal.x, 0, topCenterLocal.z)).sqrMagnitude;
+    //            if (distSq > maxDistSq) maxDistSq = distSq;
+    //        }
+    //        topRadius = Mathf.Sqrt(maxDistSq) * 0.85f;
+    //    }
+    //}
 
     void FlatShade()
     {

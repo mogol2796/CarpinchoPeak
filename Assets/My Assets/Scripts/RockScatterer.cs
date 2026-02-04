@@ -46,7 +46,6 @@ public class RockScatterer : MonoBehaviour
     [Tooltip("Noise multiplier when nesting rocks")] public float noiseMultiplier = 0.5f;
 
     [Header("References")]
-    public GameObject[] globalPlantPrefabs;
     public Material rockMaterial;
 
     private class RayData { public Vector3 start; public Vector3 end; public Vector3 normal; public bool hit; }
@@ -100,7 +99,7 @@ public class RockScatterer : MonoBehaviour
         rockScript.baseRadius = baseRockRadius;
         rockScript.noiseStrength = baseNoiseStrength;
         rockScript.seed = Random.Range(0, 10000);
-
+        rockScript.useFlatTop = true;
        
         if (autoScaleBasedOnLayer && hitObject.layer != LayerMask.NameToLayer("Mountain"))
         {
@@ -115,7 +114,9 @@ public class RockScatterer : MonoBehaviour
         if (rockMaterial != null) rockObj.GetComponent<MeshRenderer>().sharedMaterial = rockMaterial;
 
         PlantSpawner pSpawner = rockObj.AddComponent<PlantSpawner>();
-        pSpawner.plantPrefabs = globalPlantPrefabs;
+
+        rockObj.GetComponent<MeshCollider>().providesContacts = true;
+        rockObj.layer = 3;
 
         rockScript.GenerateRock();
     }
@@ -148,19 +149,15 @@ public class RockScatterer : MonoBehaviour
 
     void OnDrawGizmosSelected()
     {
-        // 1. Draw the Scan Area (The "Ring")
         Gizmos.color = Color.yellow;
         Vector3 center = transform.position;
 
-        // Draw the min/max height lines
         Gizmos.DrawLine(center + Vector3.up * minHeight, center + Vector3.up * maxHeight);
 
-        // 2. Draw the FOV Arc using UnityEditor Handles (Visualizes the cone)
 #if UNITY_EDITOR
         UnityEditor.Handles.color = new Color(1, 1, 0, 0.1f); // Transparent yellow
         Vector3 forward = Quaternion.Euler(0, centerAngle, 0) * Vector3.forward;
 
-        // Draw the solid arc
         UnityEditor.Handles.DrawSolidArc(
             center + Vector3.up * ((minHeight + maxHeight) / 2),
             Vector3.up,
@@ -169,7 +166,6 @@ public class RockScatterer : MonoBehaviour
             scanRadius
         );
 
-        // Draw the wire outline
         UnityEditor.Handles.color = Color.yellow;
         UnityEditor.Handles.DrawWireArc(
             center + Vector3.up * ((minHeight + maxHeight) / 2),
@@ -180,7 +176,6 @@ public class RockScatterer : MonoBehaviour
         );
 #endif
 
-        // 3. Draw the Raycast history
         foreach (var ray in lastSpawnRays)
         {
             Gizmos.color = ray.hit ? Color.green : Color.red;
