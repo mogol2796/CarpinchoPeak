@@ -7,18 +7,18 @@ public class PlantSpawner : MonoBehaviour
     [Header("Plant Settings")]
     public GameObject[] plantPrefabs;
     public int plantCount = 5;
-    public Vector2 scaleRange = new Vector2(0.5f, 1.5f);
+    public Vector2 scaleRange = new Vector2(2f, 5f);
 
     [Header("Alignment")]
     public bool matchRockRotation = false;
 
     [Header("Density Settings")]
     [Tooltip("1 = Random, Higher = More clustered in the center")]
-    public float centerClustering = 2.0f;
+    public float centerClustering = 1.0f;
 
     [Header("Slope Limits")]
     [Range(0f, 90f)]
-    public float maxSlopeAngle = 30f; 
+    public float maxSlopeAngle = 30f;
 
     public void SpawnPlants()
     {
@@ -26,6 +26,8 @@ public class PlantSpawner : MonoBehaviour
         if (rock == null || plantPrefabs == null || plantPrefabs.Length == 0) return;
 
         ClearPlants();
+
+        int mountainLayer = LayerMask.GetMask("MountainRock");
 
         for (int i = 0; i < plantCount; i++)
         {
@@ -35,8 +37,8 @@ public class PlantSpawner : MonoBehaviour
 
             Vector3 spawnPosLocal = new Vector3(
                 rock.topCenterLocal.x + finalPoint.x,
-                rock.topCenterLocal.y + 2f,
-                rock.topCenterLocal.z + finalPoint.y
+                rock.topCenterLocal.y + 2f, // Start raycast above the rock
+                rock.topCenterLocal.y + finalPoint.y
             );
 
             Vector3 worldOrigin = transform.TransformPoint(spawnPosLocal);
@@ -44,11 +46,30 @@ public class PlantSpawner : MonoBehaviour
             RaycastHit hit;
             if (Physics.Raycast(worldOrigin, -transform.up, out hit, 5f))
             {
+                if (hit.collider.gameObject != this.gameObject)
+                {
+                    continue; 
+                }
 
                 float angle = Vector3.Angle(transform.up, hit.normal);
 
                 if (angle <= maxSlopeAngle)
                 {
+                    float checkRadius = 0.2f;
+                    Collider[] neighbors = Physics.OverlapSphere(hit.point, checkRadius, mountainLayer);
+
+                    bool isBuried = false;
+                    foreach (var col in neighbors)
+                    {
+                        if (col.gameObject != this.gameObject)
+                        {
+                            isBuried = true;
+                            break;
+                        }
+                    }
+
+                    if (isBuried) continue;
+
                     GameObject prefab = plantPrefabs[Random.Range(0, plantPrefabs.Length)];
                     GameObject plant = Instantiate(prefab, hit.point, Quaternion.identity);
 
