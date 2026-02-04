@@ -26,6 +26,17 @@ public class ClimbManager : MonoBehaviour
     public float normalCompliance = 0.25f;// deja algo de componente normal al coronar
     public float minSlideSpeed = 0.02f;   // si tras proyectar queda casi 0, desliza en tangente
 
+    [Header("Collider While Climbing")]
+    public bool resizeColliderWhileClimbing = true;
+    public CapsuleCollider characterCapsule;
+    public Transform head; // asigna CenterEye / MainCamera (lo que represente la cabeza)
+    public float climbCapsuleRadius = 0.18f;
+    public float climbCapsuleHeight = 0.36f; // set ~= 2*radius to behave like a sphere
+    public float capsuleShrinkSpeed = 25f;
+    public float capsuleExpandSpeed = 8f;
+    public float capsuleExpandDelay = 0.05f;
+    public float capsuleExpandCheckInflation = 0.002f;
+
     [Header("Smoothing (used for non-climb moves)")]
     public float moveSmoothing = 20f;
 
@@ -55,6 +66,14 @@ public class ClimbManager : MonoBehaviour
     private Vector3 lastHandPos;
     private Vector3 smoothedApplied;
     private Vector3 smoothedNormal = Vector3.zero;
+    private float defaultCapsuleRadius;
+    private float defaultCapsuleHeight;
+    private Vector3 defaultCapsuleLocalPos;
+    private float capsuleBlend01;
+    private float capsuleExpandDelayTimer;
+    private bool hasCachedCapsuleDefaults;
+    private readonly Collider[] capsuleOverlapCache = new Collider[16];
+    private bool pendingReenableDisabledComponents;
 
     // filtro de jitter
     private Vector3 filteredHandDelta = Vector3.zero;
@@ -71,6 +90,20 @@ public class ClimbManager : MonoBehaviour
 
     public bool IsClimbing => isClimbing;
     public bool IsMantling => isMantling;
+    public bool IsClimbColliderResizing => resizeColliderWhileClimbing && capsuleBlend01 > 0.001f;
+
+    private void Awake()
+    {
+        if (!ovrCharacterController)
+            ovrCharacterController = GetComponentInChildren<OvrCharacterController>();
+
+        if (!characterCapsule && ovrCharacterController)
+            characterCapsule = ovrCharacterController.GetComponent<CapsuleCollider>();
+
+        if (!head && Camera.main) head = Camera.main.transform;
+
+        CacheCapsuleDefaults(force: true);
+    }
 
     private void OnEnable() => mantleAction.action?.Enable();
     private void OnDisable() => mantleAction.action?.Disable();
@@ -97,6 +130,13 @@ public class ClimbManager : MonoBehaviour
         if (!ovrCharacterController || !playerRoot) return;
 
         activeHand = hand;
+        pendingReenableDisabledComponents = false;
+
+        if (resizeColliderWhileClimbing)
+        {
+            CacheCapsuleDefaults(force: true);
+            capsuleExpandDelayTimer = 0f;
+        }
 
         if (!isClimbing)
         {
@@ -151,6 +191,12 @@ public class ClimbManager : MonoBehaviour
         releaseTimer = releaseSeconds;
         fallVelocity = 0f;
         smoothedApplied = Vector3.zero;
+
+        if (resizeColliderWhileClimbing)
+            capsuleExpandDelayTimer = capsuleExpandDelay;
+
+        // Re-enable movement/locomotion only after recovery (see TryReenableDisabledComponents).
+        pendingReenableDisabledComponents = true;
     }
 
     // ✅ CAMBIO: Update() en vez de LateUpdate()
@@ -169,11 +215,15 @@ public class ClimbManager : MonoBehaviour
         //     return;
         // }
 
+        UpdateClimbCapsule();
+        TryReenableDisabledComponents();
+
         UpdateStamina();
 
         if (!isClimbing && releaseTimer > 0f)
         {
             HandleReleaseFall();
+            TryReenableDisabledComponents();
             return;
         }
 
@@ -243,6 +293,140 @@ public class ClimbManager : MonoBehaviour
         lastHandPos = current;
     }
 
+    private void CacheCapsuleDefaults(bool force = false)
+    {
+        if (!resizeColliderWhileClimbing) return;
+        if (!characterCapsule) return;
+        if (hasCachedCapsuleDefaults && !force) return;
+
+        defaultCapsuleRadius = characterCapsule.radius;
+        defaultCapsuleHeight = characterCapsule.height;
+        defaultCapsuleLocalPos = characterCapsule.transform.localPosition;
+        hasCachedCapsuleDefaults = true;
+    }
+
+    private void UpdateClimbCapsule()
+    {
+        if (!resizeColliderWhileClimbing) return;
+        if (!ovrCharacterController) return;
+
+        if (!characterCapsule)
+            characterCapsule = ovrCharacterController.GetComponent<CapsuleCollider>();
+        if (!characterCapsule) return;
+
+        CacheCapsuleDefaults();
+        if (!hasCachedCapsuleDefaults) return;
+
+        // Keep the capsule small while climbing, then expand back when safe.
+        bool keepSmall = isClimbing || isMantling;
+        float target = keepSmall ? 1f : 0f;
+
+        if (!keepSmall && capsuleExpandDelayTimer > 0f)
+        {
+            capsuleExpandDelayTimer -= Time.deltaTime;
+            // durante el delay, mantenemos collider pequeño pero seguimos actualizando posición
+            if (capsuleExpandDelayTimer > 0f)
+                target = 1f;
+        }
+
+        float dt = Time.deltaTime;
+        float speed = (target > capsuleBlend01) ? capsuleShrinkSpeed : capsuleExpandSpeed;
+        float nextBlend = Mathf.MoveTowards(capsuleBlend01, target, speed * dt);
+
+        // Primero intentamos aplicar el cambio de tamaño (puede fallar si está bloqueado al expandir)
+        if (!Mathf.Approximately(nextBlend, capsuleBlend01))
+        {
+            float nextRadius = Mathf.Lerp(defaultCapsuleRadius, climbCapsuleRadius, nextBlend);
+            float nextHeight = Mathf.Lerp(defaultCapsuleHeight, climbCapsuleHeight, nextBlend);
+            nextHeight = Mathf.Max(nextHeight, nextRadius * 2f + 0.001f);
+
+            Vector3 nextLocalPos = ComputeCapsuleLocalPosForBlend(nextBlend, nextHeight, nextRadius);
+            Transform capsuleParent = characterCapsule.transform.parent;
+            Vector3 nextCenterWorld = capsuleParent ? capsuleParent.TransformPoint(nextLocalPos) : nextLocalPos;
+
+            bool isExpanding = nextBlend < capsuleBlend01;
+            if (!isExpanding || CanResizeCapsule(nextCenterWorld, nextRadius, nextHeight))
+            {
+                characterCapsule.radius = nextRadius;
+                characterCapsule.height = nextHeight;
+                capsuleBlend01 = nextBlend;
+            }
+        }
+
+        // Sólo controlamos la posición del capsule mientras estamos en "modo escalada".
+        // Si no, dejamos que el locomotor / rig gestione la posición normal (para no pelearse con otros scripts).
+        if (capsuleBlend01 > 0f)
+        {
+            float curRadius = Mathf.Lerp(defaultCapsuleRadius, climbCapsuleRadius, capsuleBlend01);
+            float curHeight = Mathf.Lerp(defaultCapsuleHeight, climbCapsuleHeight, capsuleBlend01);
+            curHeight = Mathf.Max(curHeight, curRadius * 2f + 0.001f);
+            characterCapsule.transform.localPosition = ComputeCapsuleLocalPosForBlend(capsuleBlend01, curHeight, curRadius);
+        }
+    }
+
+    private void TryReenableDisabledComponents()
+    {
+        if (!pendingReenableDisabledComponents) return;
+        if (releaseTimer > 0f) return;
+        if (resizeColliderWhileClimbing && capsuleBlend01 > 0.001f) return;
+
+        pendingReenableDisabledComponents = false;
+
+        if (disableWhileClimbing != null)
+            foreach (var b in disableWhileClimbing)
+                if (b) b.enabled = true;
+    }
+
+    private Vector3 ComputeCapsuleLocalPosForBlend(float blend01, float height, float radius)
+    {
+        // Queremos que el collider pequeño quede a la altura de la cabeza.
+        // Para que el "stand up" parezca natural, anclamos el "top" del capsule al nivel de la cámara,
+        // de forma que al expandir crece hacia abajo.
+        Vector3 localPos = defaultCapsuleLocalPos;
+        if (!head) return localPos;
+
+        Transform parent = characterCapsule.transform.parent;
+        Vector3 headLocal = parent ? parent.InverseTransformPoint(head.position) : head.position;
+        float halfSegment = Mathf.Max(0f, height * 0.5f - radius);
+        float headAnchoredCenterY = headLocal.y - halfSegment;
+        localPos.y = Mathf.Lerp(defaultCapsuleLocalPos.y, headAnchoredCenterY, blend01);
+        return localPos;
+    }
+
+    private bool CanResizeCapsule(Vector3 desiredCenterWorld, float radius, float height)
+    {
+        int mask = ovrCharacterController ? ovrCharacterController.LayerMask.value : ~0;
+
+        float halfSegment = Mathf.Max(0f, height * 0.5f - radius);
+        Vector3 capsuleBase = desiredCenterWorld - Vector3.up * halfSegment;
+        Vector3 capsuleTop = desiredCenterWorld + Vector3.up * halfSegment;
+
+        float probeRadius = radius + capsuleExpandCheckInflation;
+        int count = Physics.OverlapCapsuleNonAlloc(
+            capsuleBase,
+            capsuleTop,
+            probeRadius,
+            capsuleOverlapCache,
+            mask,
+            QueryTriggerInteraction.Ignore);
+
+        // If we fill the cache, assume blocked (safer than clipping through).
+        if (count >= capsuleOverlapCache.Length) return false;
+
+        Transform rigRoot = playerRoot ? playerRoot : transform.root;
+
+        for (int i = 0; i < count; i++)
+        {
+            Collider c = capsuleOverlapCache[i];
+            if (!c) continue;
+            if (c == characterCapsule) continue;
+            if (rigRoot && c.transform.IsChildOf(rigRoot)) continue;
+            return false;
+        }
+
+        return true;
+    }
+
     private void ApplyMoveWithCollision(Vector3 move)
     {
         Transform ccT = ovrCharacterController.transform;
@@ -294,13 +478,7 @@ public class ClimbManager : MonoBehaviour
         ApplyMoveWithCollision(fallMove);
 
         if (releaseTimer <= 0f)
-        {
             smoothedApplied = Vector3.zero;
-
-            if (disableWhileClimbing != null)
-                foreach (var b in disableWhileClimbing)
-                    if (b) b.enabled = true;
-        }
     }
 
     private void UpdateStamina()
@@ -316,8 +494,6 @@ public class ClimbManager : MonoBehaviour
             }
         }
 
-        bool grounded = ovrCharacterController != null && ovrCharacterController.IsGrounded;
-
         if (anyGrabbing)
         {
             playerManager.energy = Mathf.Max(0f, playerManager.energy - drainPerSecond * Time.deltaTime);
@@ -325,8 +501,8 @@ public class ClimbManager : MonoBehaviour
         }
         else
         {
-            if (grounded)
-                playerManager.energy = Mathf.Min(playerManager.maxEnergy, playerManager.energy + regenPerSecond * Time.deltaTime);
+            // Regen even while airborne so the player can recover after letting go.
+            playerManager.energy = Mathf.Min(playerManager.maxEnergy, playerManager.energy + regenPerSecond * Time.deltaTime);
 
             if (playerManager.outOfStamina && playerManager.energy >= minStaminaToGrab)
                 playerManager.outOfStamina = false;

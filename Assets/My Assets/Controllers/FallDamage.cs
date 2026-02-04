@@ -53,8 +53,9 @@ public class FallDamage : MonoBehaviour
 
         bool grounded = ovrCharacterController.IsGrounded;
 
-        // Mientras escalas, ignora completamente fall damage (evita daño "fantasma" por colisiones/ground jitter)
-        if (climbManager && (climbManager.IsClimbing || climbManager.IsMantling))
+        // Mientras escalas o el collider aún está en transición, ignora fall damage
+        // (evita daño "fantasma" por colisiones/ground jitter o por el resize del capsule).
+        if (climbManager && (climbManager.IsClimbing || climbManager.IsMantling || climbManager.IsClimbColliderResizing))
         {
             _airTime = 0f;
             _maxDownSpeed = 0f;
