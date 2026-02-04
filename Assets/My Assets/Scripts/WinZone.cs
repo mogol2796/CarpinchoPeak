@@ -10,7 +10,7 @@ public class WinZone : MonoBehaviour
 
     [Header("Feedback Settings")]
     public AudioClip winSound;
-    public ParticleSystem fireworksParticles; // <--- NEW: Reference for your fireworks
+    public ParticleSystem fireworksParticles;
     public bool slowMotionOnWin = true;
     [Range(0f, 1f)] public float slowMoAmount = 0.2f;
 
