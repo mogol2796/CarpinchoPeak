@@ -33,7 +33,6 @@ public class WinZone : MonoBehaviour
     {
         hasWon = true;
 
-        // 1. Visual Feedback: Show UI and Cursor
         if (winUI != null)
         {
             winUI.SetActive(true);
@@ -41,24 +40,20 @@ public class WinZone : MonoBehaviour
             Cursor.visible = true;
         }
 
-        // 2. NEW: Trigger Fireworks
         if (fireworksParticles != null)
         {
             fireworksParticles.Play();
         }
 
-        // 3. Audio Feedback
         AudioSource audio = GetComponent<AudioSource>();
         if (audio != null && winSound != null)
         {
             audio.PlayOneShot(winSound);
         }
 
-        // 4. Environment: Stop the Fog
         FogRise fog = FindFirstObjectByType<FogRise>();
         if (fog != null) fog.enabled = false;
 
-        // 5. Dramatic Slow Motion
         if (slowMotionOnWin)
         {
             Time.timeScale = slowMoAmount;
