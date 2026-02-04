@@ -2,6 +2,8 @@ using UnityEngine;
 
 public class FogRise : MonoBehaviour
 {
+    [Header("Refs")]
+    public PlayerManager playerManager;
     [Header("Movement")]
     public float riseSpeed = 10f;
 
@@ -11,6 +13,7 @@ public class FogRise : MonoBehaviour
     public float maxFogDensity = 0.05f;
     [Tooltip("How far above the top of the cube the fog starts appearing visually")]
     public float visualWarningDistance = 10f;
+
 
     [Header("Damage Settings")]
     public float damagePerSecond = 10f;
@@ -48,7 +51,16 @@ public class FogRise : MonoBehaviour
             if (coldTickTimer >= coldInterval)
             {
                 //AQUI VA LA LOGICA PARA PONERLE FRIO AL PLAYER
+                playerManager.Freeze(damagePerSecond);
             }
+        }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (other.CompareTag("Player"))
+        {
+            coldTickTimer = 0f;
         }
     }
 }

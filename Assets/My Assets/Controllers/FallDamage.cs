@@ -19,7 +19,7 @@ public class FallDamage : MonoBehaviour
     public float lethalImpactSpeed = 14.0f;  // ajusta
 
     [Header("Damage")]
-    public float maxDamage = 80f;            // daño máximo al llegar a lethalImpactSpeed
+    public float maxDamage = 100f;            // daño máximo al llegar a lethalImpactSpeed
 
     private float _lastY;
     private bool _hasLastY;

@@ -26,6 +26,19 @@ public class ClimbManager : MonoBehaviour
     public float normalCompliance = 0.25f;// deja algo de componente normal al coronar
     public float minSlideSpeed = 0.02f;   // si tras proyectar queda casi 0, desliza en tangente
 
+    [Header("Ovr CharacterController (stability)")]
+    public bool overrideOvrControllerDefaults = false;
+    public float locomotionOvrMaxStep = 0.18f;
+    [Range(1, 8)] public int locomotionOvrMaxReboundSteps = 2;
+    // Set < 0 to keep the current (default) SkinWidth.
+    public float locomotionOvrSkinWidth = -1f;
+
+    public bool tuneOvrControllerDuringClimb = true;
+    public float climbOvrMaxStep = 0f;
+    [Range(1, 8)] public int climbOvrMaxReboundSteps = 1;
+    // Set < 0 to keep the current (default) SkinWidth.
+    public float climbOvrSkinWidth = -1f;
+
     [Header("Collider While Climbing")]
     public bool resizeColliderWhileClimbing = true;
     public CapsuleCollider characterCapsule;
@@ -36,6 +49,17 @@ public class ClimbManager : MonoBehaviour
     public float capsuleExpandSpeed = 8f;
     public float capsuleExpandDelay = 0.05f;
     public float capsuleExpandCheckInflation = 0.002f;
+
+    [Header("Release Assist")]
+    public float releaseWallPushDistance = 0.05f;
+
+    [Header("Unstuck / Penetration")]
+    public bool resolvePenetration = true;
+    [Range(1, 8)] public int penetrationIterations = 4;
+    public float penetrationExtraDistance = 0.001f;
+    public float penetrationMinDistance = 0.002f;
+    public float penetrationMaxDistancePerFrame = 0.08f;
+    public bool penetrationPreferHorizontal = true;
 
     [Header("Smoothing (used for non-climb moves)")]
     public float moveSmoothing = 20f;
@@ -66,6 +90,11 @@ public class ClimbManager : MonoBehaviour
     private Vector3 lastHandPos;
     private Vector3 smoothedApplied;
     private Vector3 smoothedNormal = Vector3.zero;
+    private float defaultOvrMaxStep;
+    private int defaultOvrMaxReboundSteps;
+    private float defaultOvrSkinWidth;
+    private bool hasCachedOvrDefaults;
+    private bool ovrTunedForClimb;
     private float defaultCapsuleRadius;
     private float defaultCapsuleHeight;
     private Vector3 defaultCapsuleLocalPos;
@@ -100,13 +129,23 @@ public class ClimbManager : MonoBehaviour
         if (!characterCapsule && ovrCharacterController)
             characterCapsule = ovrCharacterController.GetComponent<CapsuleCollider>();
 
+        if (characterCapsule && characterCapsule.center != Vector3.zero)
+            Debug.LogWarning("ClimbManager: characterCapsule.center should be (0,0,0) with OVR CharacterController (it ignores CapsuleCollider.center).");
+
         if (!head && Camera.main) head = Camera.main.transform;
 
+        CacheOvrControllerDefaults(force: true);
+        ApplyOvrLocomotionTuningIfEnabled();
         CacheCapsuleDefaults(force: true);
     }
 
     private void OnEnable() => mantleAction.action?.Enable();
-    private void OnDisable() => mantleAction.action?.Disable();
+
+    private void OnDisable()
+    {
+        mantleAction.action?.Disable();
+        RestoreOvrControllerDefaultsIfNeeded();
+    }
 
     // public void SetMantleZone(MantleZone z) => currentZone = z;
 
@@ -131,6 +170,8 @@ public class ClimbManager : MonoBehaviour
 
         activeHand = hand;
         pendingReenableDisabledComponents = false;
+
+        ApplyOvrClimbTuning();
 
         if (resizeColliderWhileClimbing)
         {
@@ -179,6 +220,9 @@ public class ClimbManager : MonoBehaviour
 
     private void StopClimb()
     {
+        // Keep a copy before clearing, so we can nudge away from the wall on release.
+        Vector3 releaseNormal = smoothedNormal;
+
         isClimbing = false;
         activeHand = null;
 
@@ -194,6 +238,15 @@ public class ClimbManager : MonoBehaviour
 
         if (resizeColliderWhileClimbing)
             capsuleExpandDelayTimer = capsuleExpandDelay;
+
+        // Small separation push to avoid getting stuck inside rough/stacked rocks when the capsule expands.
+        // Prefer a horizontal push so we don't "pop" upward on noisy mesh normals.
+        if (releaseWallPushDistance > 0f && releaseNormal != Vector3.zero && ovrCharacterController && playerRoot)
+        {
+            Vector3 pushDir = Vector3.ProjectOnPlane(releaseNormal, Vector3.up);
+            if (pushDir.sqrMagnitude < 0.0001f) pushDir = releaseNormal;
+            ApplyMoveWithCollision_NoSmooth(pushDir.normalized * releaseWallPushDistance);
+        }
 
         // Re-enable movement/locomotion only after recovery (see TryReenableDisabledComponents).
         pendingReenableDisabledComponents = true;
@@ -293,6 +346,14 @@ public class ClimbManager : MonoBehaviour
         lastHandPos = current;
     }
 
+    private void LateUpdate()
+    {
+        if (!resolvePenetration) return;
+        if (!characterCapsule || !ovrCharacterController || !playerRoot) return;
+
+        ResolveCapsulePenetration();
+    }
+
     private void CacheCapsuleDefaults(bool force = false)
     {
         if (!resizeColliderWhileClimbing) return;
@@ -303,6 +364,77 @@ public class ClimbManager : MonoBehaviour
         defaultCapsuleHeight = characterCapsule.height;
         defaultCapsuleLocalPos = characterCapsule.transform.localPosition;
         hasCachedCapsuleDefaults = true;
+    }
+
+    private void ResolveCapsulePenetration()
+    {
+        // Meta's CharacterController does not try to depenetrate if we end up inside colliders
+        // (eg. stacked rocks, teleport-ish moves, or large frame deltas). This pass pushes the whole rig out.
+        float remainingBudget = Mathf.Max(0f, penetrationMaxDistancePerFrame);
+        int iters = Mathf.Clamp(penetrationIterations, 1, 8);
+
+        Transform rigRoot = playerRoot ? playerRoot : transform.root;
+        int mask = ovrCharacterController ? ovrCharacterController.LayerMask.value : ~0;
+
+        for (int iter = 0; iter < iters; iter++)
+        {
+            if (remainingBudget <= 0f) break;
+
+            Vector3 center = characterCapsule.transform.position;
+            float radius = characterCapsule.radius;
+            float height = characterCapsule.height;
+            float halfSegment = Mathf.Max(0f, height * 0.5f - radius);
+            Vector3 capsuleBase = center - Vector3.up * halfSegment;
+            Vector3 capsuleTop = center + Vector3.up * halfSegment;
+
+            int count = Physics.OverlapCapsuleNonAlloc(
+                capsuleBase,
+                capsuleTop,
+                radius,
+                capsuleOverlapCache,
+                mask,
+                QueryTriggerInteraction.Ignore);
+
+            if (count <= 0) break;
+
+            Vector3 totalPush = Vector3.zero;
+
+            for (int i = 0; i < count; i++)
+            {
+                Collider other = capsuleOverlapCache[i];
+                if (!other) continue;
+                if (other == characterCapsule) continue;
+                if (rigRoot && other.transform.IsChildOf(rigRoot)) continue;
+
+                if (Physics.ComputePenetration(
+                        characterCapsule, characterCapsule.transform.position, characterCapsule.transform.rotation,
+                        other, other.transform.position, other.transform.rotation,
+                        out Vector3 direction, out float distance))
+                {
+                    if (distance < penetrationMinDistance) continue;
+
+                    Vector3 push = direction * (distance + penetrationExtraDistance);
+
+                    if (penetrationPreferHorizontal)
+                    {
+                        Vector3 flat = Vector3.ProjectOnPlane(push, Vector3.up);
+                        if (flat.sqrMagnitude > 0.000001f)
+                            push = flat;
+                    }
+
+                    totalPush += push;
+                }
+            }
+
+            if (totalPush.sqrMagnitude < 0.0000001f) break;
+
+            float mag = totalPush.magnitude;
+            if (mag > remainingBudget)
+                totalPush = totalPush * (remainingBudget / mag);
+
+            playerRoot.position += totalPush;
+            remainingBudget -= totalPush.magnitude;
+        }
     }
 
     private void UpdateClimbCapsule()
@@ -316,6 +448,8 @@ public class ClimbManager : MonoBehaviour
 
         CacheCapsuleDefaults();
         if (!hasCachedCapsuleDefaults) return;
+
+        float prevBlend = capsuleBlend01;
 
         // Keep the capsule small while climbing, then expand back when safe.
         bool keepSmall = isClimbing || isMantling;
@@ -362,6 +496,13 @@ public class ClimbManager : MonoBehaviour
             curHeight = Mathf.Max(curHeight, curRadius * 2f + 0.001f);
             characterCapsule.transform.localPosition = ComputeCapsuleLocalPosForBlend(capsuleBlend01, curHeight, curRadius);
         }
+        else if (prevBlend > 0f)
+        {
+            // If we just finished resizing (blend reached 0 this frame), make sure we fully restore the
+            // pre-climb capsule local position. Otherwise (large dt) we can get stuck at the head-anchored
+            // position and the locomotor may "snap" the player origin upward.
+            characterCapsule.transform.localPosition = defaultCapsuleLocalPos;
+        }
     }
 
     private void TryReenableDisabledComponents()
@@ -372,9 +513,67 @@ public class ClimbManager : MonoBehaviour
 
         pendingReenableDisabledComponents = false;
 
+        RestoreOvrControllerDefaultsIfNeeded();
+
         if (disableWhileClimbing != null)
             foreach (var b in disableWhileClimbing)
                 if (b) b.enabled = true;
+    }
+
+    private void CacheOvrControllerDefaults(bool force = false)
+    {
+        if (!ovrCharacterController) return;
+        if (hasCachedOvrDefaults && !force) return;
+
+        defaultOvrMaxStep = ovrCharacterController.MaxStep;
+        defaultOvrMaxReboundSteps = ovrCharacterController.MaxReboundSteps;
+        defaultOvrSkinWidth = ovrCharacterController.SkinWidth;
+        hasCachedOvrDefaults = true;
+    }
+
+    private void ApplyOvrLocomotionTuningIfEnabled()
+    {
+        if (!overrideOvrControllerDefaults) return;
+        if (!ovrCharacterController) return;
+
+        CacheOvrControllerDefaults();
+
+        ovrCharacterController.MaxStep = Mathf.Max(0f, locomotionOvrMaxStep);
+        ovrCharacterController.MaxReboundSteps = Mathf.Clamp(locomotionOvrMaxReboundSteps, 1, 8);
+        if (locomotionOvrSkinWidth >= 0f) ovrCharacterController.SkinWidth = locomotionOvrSkinWidth;
+    }
+
+    private void ApplyOvrClimbTuning()
+    {
+        if (!tuneOvrControllerDuringClimb) return;
+        if (!ovrCharacterController) return;
+
+        CacheOvrControllerDefaults();
+
+        ovrCharacterController.MaxStep = Mathf.Max(0f, climbOvrMaxStep);
+        ovrCharacterController.MaxReboundSteps = Mathf.Clamp(climbOvrMaxReboundSteps, 1, 8);
+        if (climbOvrSkinWidth >= 0f) ovrCharacterController.SkinWidth = climbOvrSkinWidth;
+
+        ovrTunedForClimb = true;
+    }
+
+    private void RestoreOvrControllerDefaultsIfNeeded()
+    {
+        if (!ovrTunedForClimb) return;
+        if (!ovrCharacterController) return;
+        ovrTunedForClimb = false;
+
+        // Restore to the "locomotion" settings (either overridden, or the cached defaults).
+        if (overrideOvrControllerDefaults)
+        {
+            ApplyOvrLocomotionTuningIfEnabled();
+            return;
+        }
+
+        if (!hasCachedOvrDefaults) return;
+        ovrCharacterController.MaxStep = defaultOvrMaxStep;
+        ovrCharacterController.MaxReboundSteps = defaultOvrMaxReboundSteps;
+        ovrCharacterController.SkinWidth = defaultOvrSkinWidth;
     }
 
     private Vector3 ComputeCapsuleLocalPosForBlend(float blend01, float height, float radius)
@@ -565,6 +764,8 @@ public class ClimbManager : MonoBehaviour
         {
             isMantling = false;
             smoothedApplied = Vector3.zero;
+
+            RestoreOvrControllerDefaultsIfNeeded();
 
             if (disableWhileClimbing != null)
                 foreach (var b in disableWhileClimbing)
