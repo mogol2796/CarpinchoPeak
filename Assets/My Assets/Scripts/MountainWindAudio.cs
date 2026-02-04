@@ -31,19 +31,14 @@ public class MountainWindAudio : MonoBehaviour
 
     void Update()
     {
-        // 1. Calculate height percentage (0 to 1)
         float currentHeight = playerTransform.position.y;
         float heightT = Mathf.Clamp01((currentHeight - minHeight) / (maxHeight - minHeight));
 
-        // 2. Add "Perlin Gusts" to make the wind feel alive
-        // This prevents the wind from being a static, boring loop
         float gustValue = Mathf.PerlinNoise(Time.time * gustFrequency, noiseOffset);
 
-        // 3. Combine height-based intensity with gusts
         float targetVolume = Mathf.Lerp(minVolume, maxVolume, heightT) * gustValue;
         float targetPitch = Mathf.Lerp(minPitch, maxPitch, heightT) + (gustValue * 0.1f);
 
-        // 4. Smoothly apply the values to avoid audio pops
         windAudioSource.volume = Mathf.Lerp(windAudioSource.volume, targetVolume, Time.deltaTime);
         windAudioSource.pitch = Mathf.Lerp(windAudioSource.pitch, targetPitch, Time.deltaTime);
     }

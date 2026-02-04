@@ -7,7 +7,7 @@ public class PlantSpawner : MonoBehaviour
     [Header("Plant Settings")]
     public GameObject[] plantPrefabs;
     public int plantCount = 5;
-    public Vector2 scaleRange = new Vector2(2f, 5f);
+    public Vector2 scaleRange = new Vector2(0.1f, 0.5f);
 
     [Header("Alignment")]
     public bool matchRockRotation = false;

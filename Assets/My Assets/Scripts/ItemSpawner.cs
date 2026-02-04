@@ -8,7 +8,7 @@ public class ItemSpawner : MonoBehaviour
     [Range(0, 5)]
     public int maxItemsPerRock = 1; 
     [Range(0f, 1f)]
-    public float spawnChance = 0.3f;
+    public float spawnChance = 0.7f;
 
     [Header("Placement Rules")]
     public LayerMask rockLayer;

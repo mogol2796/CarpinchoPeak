@@ -1,5 +1,5 @@
 using UnityEngine;
-using System.Collections; // Required for Coroutines
+using System.Collections;
 
 public class MountainGenerator : MonoBehaviour
 {
@@ -24,9 +24,23 @@ public class MountainGenerator : MonoBehaviour
     public GameObject[] globalPlantPrefabs;
     public GameObject[] globalItemPrefabs;
 
+    [Header("Skybox Sync")]
+    public Material skyboxMaterial;
+    public Light directionalLight;
+
     void Start()
     {
         if (generateOnStart) Generate();
+    }
+
+
+    void Update()
+    {
+        if (skyboxMaterial != null && directionalLight != null)
+        {
+            Vector3 sunDir = -directionalLight.transform.forward;
+            skyboxMaterial.SetVector("_SunDirection", sunDir);
+        }
     }
 
     [ContextMenu("Generate Full Mountain")]
@@ -81,11 +95,6 @@ public class MountainGenerator : MonoBehaviour
                 spawner.plantPrefabs = globalPlantPrefabs;
                 spawner.SpawnPlants();
             }
-
-            // Then spawn items
-            if (rock.TryGetComponent<ItemSpawner>(out var iSpawner))
-                iSpawner.itemPrefabs = globalItemPrefabs;
-                iSpawner.SpawnItems();
         }
 
         float truePeakY = 0;
@@ -99,6 +108,13 @@ public class MountainGenerator : MonoBehaviour
         }
 
         PlaceWinZone(truePeakY);
+
+        MasterItemSpawner masterItemSpawner = FindFirstObjectByType<MasterItemSpawner>();
+        if (masterItemSpawner != null)
+        {
+            masterItemSpawner.SpawnItems();
+        }
+
         Debug.Log("Mountain Generation and Decoration Complete!");
     }
 
