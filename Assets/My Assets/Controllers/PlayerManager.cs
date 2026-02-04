@@ -85,7 +85,7 @@ public class PlayerManager : MonoBehaviour
     private void UpdateHunger(float dt)
     {
         if (!drainHunger) return;
-
+        Debug.Log("Draining hunger");
         float drainPerSecond = hungerDrainPerMinute / 60f;
         hunger = Mathf.Max(minHunger, hunger - drainPerSecond * dt);
     }
