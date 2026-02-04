@@ -12,6 +12,7 @@ public class MountainGenerator : MonoBehaviour
     public int lastBigSeed;
     public int lastMidSeed;
     public int lastSmallSeed;
+    public bool moveRocks = false;
 
     [Header("Settings")]
     public bool generateOnStart = true;
@@ -51,41 +52,45 @@ public class MountainGenerator : MonoBehaviour
 
     IEnumerator GenerationRoutine()
     {
-        if (randomizeOnGenerate)
+        if (moveRocks)
         {
-            lastBigSeed = Random.Range(1, 999999);
-            lastMidSeed = Random.Range(1, 999999);
-            lastSmallSeed = Random.Range(1, 999999);
+            if (randomizeOnGenerate)
+            {
+                lastBigSeed = Random.Range(1, 999999);
+                lastMidSeed = Random.Range(1, 999999);
+                lastSmallSeed = Random.Range(1, 999999);
 
-            if (bigScatterer) bigScatterer.scatterSeed = lastBigSeed;
-            if (midScatterer) midScatterer.scatterSeed = lastMidSeed;
-            if (smallScatterer) smallScatterer.scatterSeed = lastSmallSeed;
+                if (bigScatterer) bigScatterer.scatterSeed = lastBigSeed;
+                if (midScatterer) midScatterer.scatterSeed = lastMidSeed;
+                if (smallScatterer) smallScatterer.scatterSeed = lastSmallSeed;
+            }
+
+            Debug.Log($"Generating Mountain with Seeds: Big({lastBigSeed}) Mid({lastMidSeed}) Small({lastSmallSeed})");
+
+            if (bigScatterer != null)
+            {
+                bigScatterer.SpawnRocks();
+                SetLayerRecursive(bigScatterer.transform, LayerMask.NameToLayer("BigBoulder"));
+            }
+
+            Physics.SyncTransforms();
+
+            if (midScatterer != null)
+            {
+                midScatterer.SpawnRocks();
+                SetLayerRecursive(midScatterer.transform, LayerMask.NameToLayer("MidBoulder"));
+            }
+
+            Physics.SyncTransforms();
+
+            if (smallScatterer != null)
+            {
+                smallScatterer.SpawnRocks();
+            }
+
+            yield return new WaitForFixedUpdate();
         }
-
-        Debug.Log($"Generating Mountain with Seeds: Big({lastBigSeed}) Mid({lastMidSeed}) Small({lastSmallSeed})");
-
-        if (bigScatterer != null)
-        {
-            bigScatterer.SpawnRocks();
-            SetLayerRecursive(bigScatterer.transform, LayerMask.NameToLayer("BigBoulder"));
-        }
-
-        Physics.SyncTransforms();
-
-        if (midScatterer != null)
-        {
-            midScatterer.SpawnRocks();
-            SetLayerRecursive(midScatterer.transform, LayerMask.NameToLayer("MidBoulder"));
-        }
-
-        Physics.SyncTransforms();
-
-        if (smallScatterer != null)
-        {
-            smallScatterer.SpawnRocks();
-        }
-
-        yield return new WaitForFixedUpdate();
+        
 
         ProceduralRock[] allRocks = FindObjectsByType<ProceduralRock>(FindObjectsSortMode.None);
         foreach (ProceduralRock rock in allRocks)
